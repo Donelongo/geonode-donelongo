@@ -61,6 +61,15 @@ LANGUAGE_CODE = os.getenv("LANGUAGE_CODE", "en")
 if PROJECT_NAME not in INSTALLED_APPS:
     INSTALLED_APPS += (PROJECT_NAME,)
 
+# Add your custom apps and their dependencies
+INSTALLED_APPS += (
+    'corsheaders',  # Must be early in INSTALLED_APPS
+    'rest_framework',
+    'info_hub',
+    'subscribers',
+)
+
+
 # Location of url mappings
 ROOT_URLCONF = os.getenv("ROOT_URLCONF", "{}.urls".format(PROJECT_NAME))
 
@@ -81,6 +90,9 @@ loaders = TEMPLATES[0]["OPTIONS"].get("loaders") or [
 # loaders.insert(0, 'apptemplates.Loader')
 TEMPLATES[0]["OPTIONS"]["loaders"] = loaders
 TEMPLATES[0].pop("APP_DIRS", None)
+
+# Add your custom middleware
+MIDDLEWARE.insert(1, 'corsheaders.middleware.CorsMiddleware') # Insert after SecurityMiddleware
 
 LOGGING = {
     "version": 1,
@@ -164,3 +176,18 @@ if LDAP_ENABLED and "geonode_ldap" not in INSTALLED_APPS:
 
 # Add your specific LDAP configuration after this comment:
 # https://docs.geonode.org/en/master/advanced/contrib/#configuration
+
+# --- Your Custom App Settings ---
+# CORS Settings for your React Frontend
+CORS_ALLOW_ALL_ORIGINS = True
+
+# Email configuration for sending advisories (pulled from environment variables)
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = os.getenv('EMAIL_HOST')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True').lower() == 'true'
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
+SERVER_EMAIL = DEFAULT_FROM_EMAIL
+# --------------------------------

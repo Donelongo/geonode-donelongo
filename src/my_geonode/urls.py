@@ -18,13 +18,27 @@
 #
 #########################################################################
 
-from geonode.urls import urlpatterns
+from django.urls import include, path # Ensure 'include' and 'path' are imported
+from geonode.urls import urlpatterns as geonode_urlpatterns # Rename GeoNode's urlpatterns to avoid conflict
 
-"""
+# Start with GeoNode's default URL patterns
+urlpatterns = geonode_urlpatterns
+
 # You can register your own urlpatterns here
-urlpatterns = [
-    url(r'^/?$',
-        homepage,
-        name='home'),
- ] + urlpatterns
-"""
+# Example of adding a custom homepage (uncomment and modify if needed):
+# from my_geonode.views import homepage # Assuming you have a homepage view in your custom project
+# urlpatterns = [
+#     path('', homepage, name='home'),
+# ] + urlpatterns
+
+# --- Your Custom App URLs ---
+# It's highly recommended to prefix your custom API endpoints
+# to avoid conflicts with GeoNode's existing URLs.
+urlpatterns += [
+    path('api/info_hub/', include('info_hub.urls')),
+    path('api/subscribers/', include('subscribers.urls')),
+]
+# ---------------------------
+
+# No need to add admin/ here, GeoNode's geonode.urls already includes it.
+# No need to add static/media serving here, Nginx handles it in Docker setup.
