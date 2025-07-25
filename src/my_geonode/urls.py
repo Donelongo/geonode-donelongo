@@ -38,6 +38,8 @@ urlpatterns += [
     path('api/info_hub/', include('info_hub.urls')),
     path('api/subscribers/', include('subscribers.urls')),
 ]
+print("✅ Custom URL patterns loaded: info_hub and subscribers")
+
 # ---------------------------
 
 # No need to add admin/ here, GeoNode's geonode.urls already includes it.

@@ -7,6 +7,9 @@ from django.shortcuts import get_object_or_404
 from django.http import HttpResponse
 from .models import AdvisoryMessage, Disease
 from .serializers import AdvisoryMessageSerializer, DiseaseSerializer
+from django.http import JsonResponse
+
+
 
 # For PDF generation (Platypus imports added)
 from reportlab.lib.pagesizes import letter
@@ -16,6 +19,25 @@ from reportlab.lib.units import inch
 from reportlab.lib.enums import TA_LEFT, TA_RIGHT, TA_CENTER, TA_JUSTIFY
 from io import BytesIO
 import os # To check for file existence
+
+
+from django.core.mail import send_mail
+from django.conf import settings
+
+def test_email_view(request):
+    try:
+        send_mail(
+            subject="📬 Test Advisory Email",
+            message="This is a test advisory email sent from Django.",
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=["dagmawieliaswork@gmail.com"],  # Replace this with your email
+            fail_silently=False,
+        )
+        return JsonResponse({"message": "✅ Test email sent successfully."})
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+
 
 class AdvisoryMessageViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = AdvisoryMessage.objects.all().order_by('-last_updated')
@@ -174,3 +196,4 @@ def download_advisory_pdf(request, advisory_id):
     response['Content-Disposition'] = f'attachment; filename="advisory_{advisory.id}_{filename_safe}.pdf"'
 
     return response
+

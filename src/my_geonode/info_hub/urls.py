@@ -2,6 +2,8 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
+from .views import test_email_view
+
 
 app_name = 'info_hub' # <--- CRITICAL: Make sure this line is present and correct
 
@@ -13,4 +15,6 @@ urlpatterns = [
     path('', include(router.urls)),
     # This line is the key for the PDF download:
     path('advisories/<int:advisory_id>/download/pdf/', views.download_advisory_pdf, name='download_advisory_pdf'),
+    path('test-email/', test_email_view, name='test_email'),
+
 ]
