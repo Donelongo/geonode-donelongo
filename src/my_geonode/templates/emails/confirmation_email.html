@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Subscription Confirmation</title>
+    <style>
+        body { font-family: sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 20px auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+        .header { background-color: #f4f4f4; padding: 10px 20px; text-align: center; border-bottom: 1px solid #ddd; }
+        .content { padding: 20px; }
+        .footer { text-align: center; font-size: 0.8em; color: #777; margin-top: 20px; border-top: 1px solid #ddd; padding-top: 10px; }
+        a { color: #007bff; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>Thank You for Subscribing!</h2>
+        </div>
+        <div class="content">
+            <p>Dear {{ subscriber_first_name|default:"Subscriber" }},</p>
+            <p>We're thrilled to confirm your subscription to the Agro Climate Advisory System.</p>
+            <p>You'll now receive timely updates and important advisories directly to your inbox at <strong>{{ subscriber_email }}</strong>.</p>
+            <p>We look forward to helping you stay informed!</p>
+            <p>Best regards,<br>The Agro Climate Advisory Team</p>
+        </div>
+        <div class="footer">
+            <p>This email was sent to {{ subscriber_email }}.</p>
+            <p>If you have any questions, please contact us.</p>
+        </div>
+    </div>
+</body>
+</html>

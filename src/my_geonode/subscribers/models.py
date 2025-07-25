@@ -13,6 +13,7 @@ class Subscriber(models.Model):
 
 
     class Meta:
+        app_label = 'subscribers'
         verbose_name = "Subscriber"
         verbose_name_plural = "Subscribers"
         ordering = ['-subscribed_at'] # Order by most recent subscriptions first

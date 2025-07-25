@@ -36,6 +36,7 @@ class AdvisoryMessage(models.Model):
         return self.title
 
     class Meta:
+        app_label = 'info_hub'
         verbose_name = "Advisory Message"
         verbose_name_plural = "Advisory Messages"
         ordering = ['-published_date']
@@ -59,6 +60,7 @@ class Disease(models.Model):
     def __str__(self):
         return self.name
     class Meta:
+        app_label = 'info_hub'
         verbose_name = "Disease"
         verbose_name_plural = "Diseases"
         ordering = ['name']

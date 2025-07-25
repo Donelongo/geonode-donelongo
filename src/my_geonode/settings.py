@@ -20,14 +20,23 @@
 
 # Django settings for the GeoNode project.
 import os
+import sys
 import ast
 
-try:
-    from urllib.parse import urlparse, urlunparse
-    from urllib.request import urlopen, Request
-except ImportError:
-    from urllib2 import urlopen, Request
-    from urlparse import urlparse, urlunparse
+
+LOCAL_ROOT = os.path.dirname(os.path.abspath(__file__))
+print("🧭 LOCAL_ROOT:", LOCAL_ROOT)
+print("📁 Template DIRS will include:", os.path.join(LOCAL_ROOT, "templates"))
+
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+sys.path.insert(0, os.path.join(BASE_DIR, 'my_geonode'))
+
+# Python 3 imports only (remove Python 2 fallback)
+from urllib.parse import urlparse, urlunparse
+from urllib.request import urlopen, Request
+
 # Always import base GeoNode settings first
 from geonode.settings import *
 
@@ -35,7 +44,7 @@ from geonode.settings import *
 try:
     from my_geonode.local_settings import *
 except ImportError:
-    pass # It's okay if local_settings.py doesn't exist, use defaults
+    pass  # It's okay if local_settings.py doesn't exist, use defaults
 
 #
 # General Django development settings
@@ -44,7 +53,7 @@ PROJECT_NAME = "my_geonode"
 
 # add trailing slash to site url. geoserver url will be relative to this
 if not SITEURL.endswith("/"):
-    SITEURL = "{}/".format(SITEURL)
+    SITEURL = f"{SITEURL}/"
 
 SITENAME = os.getenv("SITENAME", "my_geonode")
 
@@ -52,7 +61,7 @@ SITENAME = os.getenv("SITENAME", "my_geonode")
 # It is used for relative settings elsewhere.
 LOCAL_ROOT = os.path.abspath(os.path.dirname(__file__))
 
-WSGI_APPLICATION = "{}.wsgi.application".format(PROJECT_NAME)
+WSGI_APPLICATION = f"{PROJECT_NAME}.wsgi.application"
 
 # Language code for this installation. All choices can be found here:
 # http://www.i18nguy.com/unicode/language-identifiers.html
@@ -61,17 +70,13 @@ LANGUAGE_CODE = os.getenv("LANGUAGE_CODE", "en")
 if PROJECT_NAME not in INSTALLED_APPS:
     INSTALLED_APPS += (PROJECT_NAME,)
 
-# Add your custom apps and their dependencies
 INSTALLED_APPS += (
-    'corsheaders',  # Must be early in INSTALLED_APPS
-    'rest_framework',
     'info_hub',
     'subscribers',
 )
 
-
 # Location of url mappings
-ROOT_URLCONF = os.getenv("ROOT_URLCONF", "{}.urls".format(PROJECT_NAME))
+ROOT_URLCONF = os.getenv("ROOT_URLCONF", f"{PROJECT_NAME}.urls")
 
 # Additional directories which hold static files
 # - Give priority to local geonode-project ones
@@ -87,12 +92,26 @@ loaders = TEMPLATES[0]["OPTIONS"].get("loaders") or [
     "django.template.loaders.filesystem.Loader",
     "django.template.loaders.app_directories.Loader",
 ]
-# loaders.insert(0, 'apptemplates.Loader')
 TEMPLATES[0]["OPTIONS"]["loaders"] = loaders
 TEMPLATES[0].pop("APP_DIRS", None)
 
+TEMPLATES[0]["OPTIONS"]["context_processors"] = [
+    "django.template.context_processors.debug",
+    "django.template.context_processors.i18n",
+    "django.template.context_processors.tz",
+    "django.template.context_processors.request",  # Add this line
+    "django.template.context_processors.media",
+    "django.template.context_processors.static",
+    "django.contrib.auth.context_processors.auth",
+    "django.contrib.messages.context_processors.messages",
+    "geonode.context_processors.resource_urls",
+    "geonode.themes.context_processors.custom_theme",
+]
+
+
 # Add your custom middleware
-MIDDLEWARE.insert(1, 'corsheaders.middleware.CorsMiddleware') # Insert after SecurityMiddleware
+MIDDLEWARE = list(MIDDLEWARE)  # Convert the tuple to a list
+MIDDLEWARE.insert(1, 'corsheaders.middleware.CorsMiddleware')  # Insert after SecurityMiddleware
 
 LOGGING = {
     "version": 1,
@@ -100,7 +119,7 @@ LOGGING = {
     "formatters": {
         "verbose": {
             "format": "%(levelname)s %(asctime)s %(module)s %(process)d "
-            "%(thread)d %(message)s"
+                      "%(thread)d %(message)s"
         },
         "simple": {
             "format": "%(message)s",
@@ -155,9 +174,12 @@ LOGGING = {
     },
 }
 
+USER_ANALYTICS_ENABLED = ast.literal_eval(os.getenv("USER_ANALYTICS_ENABLED", "False"))
+
 CENTRALIZED_DASHBOARD_ENABLED = ast.literal_eval(
     os.getenv("CENTRALIZED_DASHBOARD_ENABLED", "False")
 )
+
 if (
     CENTRALIZED_DASHBOARD_ENABLED
     and USER_ANALYTICS_ENABLED

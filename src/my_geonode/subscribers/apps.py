@@ -1,4 +1,4 @@
-# agro_advisory_system/subscribers/apps.py
+# my_geonode/subscribers/apps.py
 from django.apps import AppConfig
 
 class SubscribersConfig(AppConfig):

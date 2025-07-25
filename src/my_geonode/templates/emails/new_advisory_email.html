@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Agro-Climate Advisory</title>
+    <style>
+        /* ... (your existing CSS styles) ... */
+        .footer {
+            margin-top: 20px;
+            padding-top: 10px;
+            border-top: 1px solid #eee;
+            font-size: 0.8em;
+            color: #777;
+            text-align: center;
+        }
+        .footer a {
+            color: #007bff;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>New Agro-Climate Advisory</h1>
+        </div>
+        <div class="content">
+            <h2>{{ advisory_title }}</h2>
+            <p>{{ advisory_content|safe }}</p> {# Use safe filter if content contains HTML #}
+            <p>
+                <a href="{{ advisory_url }}" class="button">Read More on Website</a>
+            </p>
+            <p>
+                <a href="{{ pdf_download_url }}" class="button">Download as PDF</a>
+            </p>
+        </div>
+        <div class="footer">
+            <p>
+                You are receiving this email because you subscribed to the Agro Climate Advisory System.
+            </p>
+            {# --- NEW: Unsubscribe Link --- #}
+            <p>
+                To unsubscribe from future emails, please <a href="{{ unsubscribe_url }}">click here</a>.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

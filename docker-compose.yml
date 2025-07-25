@@ -70,6 +70,7 @@ services:
       - nginx-confd:/etc/nginx
       - nginx-certificates:/geonode-certificates
       - statics:/mnt/volumes/statics
+      - ./mnt/volumes/statics/uploaded:/mnt/volumes/statics/uploaded
     restart: unless-stopped
 
   # memcached service

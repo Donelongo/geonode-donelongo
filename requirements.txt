@@ -21,6 +21,8 @@ smart_open==7.0.4
 PyMuPDF==1.26.3
 defusedxml==0.7.1
 zipstream-ng==1.8.0
+reportlab
+Pillow
 
 # Django Apps
 django-allauth==0.63.6
