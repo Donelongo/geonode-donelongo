@@ -6,5 +6,4 @@ class SubscribersConfig(AppConfig):
     name = 'subscribers'
 
     def ready(self):
-        # Import signals so they are registered with Django
-        import subscribers.signals # This line registers the signals
+        import subscribers.signals  # ensures the signal above is triggered

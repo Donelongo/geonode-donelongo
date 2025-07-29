@@ -5,6 +5,8 @@ from django.dispatch import receiver
 from .models import Subscriber
 from info_hub.models import AdvisoryMessage
 from info_hub.tasks import send_new_advisory_email_task
+from subscribers.tasks import send_welcome_email_task
+from .tasks import send_welcome_email_task
 
 
 @receiver(pre_save, sender=Subscriber)
@@ -17,12 +19,15 @@ def generate_subscriber_token(sender, instance, **kwargs):
 def send_latest_advisory_to_new_subscriber(sender, instance, created, **kwargs):
     if created:
         print(f"📥 New subscriber registered: {instance.email}")
+
+        # Send latest advisory
         advisory = AdvisoryMessage.objects.last()
         if advisory:
             print(f"📤 Sending latest advisory ({advisory.id}) to new subscriber...")
-            try:
-                send_new_advisory_email_task.delay(advisory.id)
-            except Exception as e:
-                print(f"❌ Failed to send advisory: {e}")
+            send_new_advisory_email_task.delay(advisory.id)
         else:
             print("⚠️ No advisory found to send.")
+
+        # Send welcome email
+        print(f"📨 Sending welcome email to {instance.email}")
+        send_welcome_email_task.delay(instance.id)
