@@ -50,6 +50,18 @@ services:
     entrypoint: ["/usr/src/my_geonode/entrypoint.sh"]
     command: "celery-cmd"
 
+    # Celery Beat - periodic task scheduler for Celery
+  celery-beat:
+    << : *default-common-django
+    container_name: celerybeat4${COMPOSE_PROJECT_NAME}
+    depends_on:
+      django:
+        condition: service_healthy
+    image: my_geonode/geonode:4.4.2
+    command: celery -A geonode.celery_app:app beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+
+
+
   # Nginx is serving django static and media files and proxies to django and geonode
   geonode:
     image: ${COMPOSE_PROJECT_NAME}/nginx:${NGINX_BASE_IMAGE_VERSION}

@@ -1,4 +1,4 @@
-# agro_advisory_system/info_hub/models.py
+# my_geonode/info_hub/models.py
 
 from django.db import models
 

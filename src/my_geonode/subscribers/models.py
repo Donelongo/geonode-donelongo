@@ -1,4 +1,4 @@
-# agro_advisory_system/subscribers/models.py
+# my_geonode/subscribers/models.py
 from django.db import models
 # No need for 'uuid' here yet, it was a thought from my side, 'secrets' is used in signal
 
