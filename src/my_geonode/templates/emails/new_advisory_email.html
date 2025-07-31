@@ -21,38 +21,44 @@
 
           <tr>
             <td>
-              <h2 style="color: #333;">{{ advisory_title }}</h2>
-              <p style="color: #555; line-height: 1.6;">{{ advisory_content|safe }}</p>
+              <h2 style="color: #222; font-size: 22px;">{{ advisory_title }}</h2>
+              <p style="color: #555; font-size: 14px; line-height: 1.6;">{{ advisory_content|safe }}</p>
 
               {% if suggestion %}
-                <h3 style="color: #333;">Recommendation:</h3>
-                <p style="color: #555;">{{ suggestion }}</p>
+                <div style="margin-top: 25px;">
+                  <h3 style="color: #333; font-size: 18px;">📌 Recommendation</h3>
+                  <p style="color: #444; font-size: 14px; line-height: 1.5;">{{ suggestion }}</p>
+                </div>
               {% endif %}
 
               {% if rainfall_forecast or temperature_outlook %}
-                <h3 style="color: #333;">Weather Outlook:</h3>
-                {% if rainfall_forecast %}
-                  <p style="color: #555;"><strong>Rainfall:</strong> {{ rainfall_forecast }}</p>
-                {% endif %}
-                {% if temperature_outlook %}
-                  <p style="color: #555;"><strong>Temperature:</strong> {{ temperature_outlook }}</p>
-                {% endif %}
+                <div style="margin-top: 25px;">
+                  <h3 style="color: #333; font-size: 18px;">☁️ Weather Outlook</h3>
+                  {% if rainfall_forecast %}
+                    <p style="color: #444;"><strong>Rainfall:</strong> {{ rainfall_forecast }}</p>
+                  {% endif %}
+                  {% if temperature_outlook %}
+                    <p style="color: #444;"><strong>Temperature:</strong> {{ temperature_outlook }}</p>
+                  {% endif %}
+                </div>
               {% endif %}
 
               {% if potential_risks %}
-                <h3 style="color: #333;">Potential Risks:</h3>
-                <p style="color: #555;">{{ potential_risks }}</p>
+                <div style="margin-top: 25px;">
+                  <h3 style="color: #333; font-size: 18px;">⚠️ Potential Risks</h3>
+                  <p style="color: #444; font-size: 14px;">{{ potential_risks }}</p>
+                </div>
               {% endif %}
 
-              <div style="margin: 20px 0;">
-                <a href="{{ advisory_url }}" style="background-color: #4CAF50; color: white; text-decoration: none; padding: 10px 20px; border-radius: 4px;">View Full Advisory</a>
-                <a href="{{ pdf_download_url }}" style="background-color: #2196F3; color: white; text-decoration: none; padding: 10px 20px; border-radius: 4px; margin-left: 10px;">Download PDF</a>
+              <div style="margin: 30px 0 10px;">
+                <a href="{{ advisory_url }}" style="background-color: #4CAF50; color: white; text-decoration: none; padding: 12px 24px; border-radius: 5px; font-weight: bold;">View Full Advisory</a>
+                <a href="{{ pdf_download_url }}" style="background-color: #2196F3; color: white; text-decoration: none; padding: 12px 24px; border-radius: 5px; margin-left: 10px; font-weight: bold;">Download PDF</a>
               </div>
             </td>
           </tr>
 
           <tr>
-            <td style="padding-top: 20px; border-top: 1px solid #eee; text-align: center; color: #999; font-size: 12px;">
+            <td style="padding-top: 30px; border-top: 1px solid #eee; text-align: center; color: #999; font-size: 12px;">
               <p>You are receiving this email because you subscribed to the Agro-Climate Advisory System.</p>
               <p><a href="{{ unsubscribe_url }}" style="color: #888;">Unsubscribe</a></p>
             </td>
@@ -64,4 +70,3 @@
   </table>
 </body>
 </html>
- 
