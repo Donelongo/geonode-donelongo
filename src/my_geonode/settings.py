@@ -22,7 +22,10 @@
 import os
 import sys
 import ast
+import json
 
+
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "django,localhost").split(",")
 
 LOCAL_ROOT = os.path.dirname(os.path.abspath(__file__))
 print("🧭 LOCAL_ROOT:", LOCAL_ROOT)
@@ -215,4 +218,10 @@ DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", EMAIL_HOST_USER)
 
 # --------------------------------
 #! Change
-BASE_URL = "http://localhost:3500"
+# Use BASE_URL from the environment, defaulting if not present
+BASE_URL = os.getenv("NGINX_BASE_URL", "http://localhost:3500")
+
+# Use MEDIA_URL and MEDIA_ROOT from the environment, if available
+# This avoids hardcoding paths and respects the Docker volumes
+MEDIA_URL = os.getenv("MEDIA_URL", "/media/")
+MEDIA_ROOT = os.getenv("MEDIA_ROOT", os.path.join(BASE_DIR, 'media'))

@@ -1,4 +1,5 @@
 #!/bin/bash
+#entrypoint.sh
 
 # Exit script in case of error
 set -e

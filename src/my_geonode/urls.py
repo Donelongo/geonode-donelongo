@@ -20,6 +20,8 @@
 
 from django.urls import include, path # Ensure 'include' and 'path' are imported
 from geonode.urls import urlpatterns as geonode_urlpatterns # Rename GeoNode's urlpatterns to avoid conflict
+from django.conf import settings
+from django.conf.urls.static import static
 
 # Start with GeoNode's default URL patterns
 urlpatterns = geonode_urlpatterns
@@ -38,9 +40,12 @@ urlpatterns += [
     path('api/info_hub/', include('info_hub.urls')),
     path('api/subscribers/', include('subscribers.urls')),
 ]
+
 print("✅ Custom URL patterns loaded: info_hub and subscribers")
 
 # ---------------------------
 
 # No need to add admin/ here, GeoNode's geonode.urls already includes it.
 # No need to add static/media serving here, Nginx handles it in Docker setup.
+
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

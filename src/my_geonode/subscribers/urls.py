@@ -1,11 +1,13 @@
-# subscribers/urls.py
-from django.urls import path
-from .views import SubscribeAPIView
-from . import views
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import SubscriberViewSet, unsubscribe_view
 
-app_name = 'subscribers' # <--- THIS LINE IS MISSING! Add this.
+app_name = 'subscribers'
+
+router = DefaultRouter()
+router.register(r'', SubscriberViewSet, basename='subscriber')
 
 urlpatterns = [
-    path('subscribe/', SubscribeAPIView.as_view(), name='subscribe'),
-    path('unsubscribe/<int:subscriber_id>/<str:token>/', views.unsubscribe_view, name='unsubscribe'),
-]   
+    path('', include(router.urls)),  # handles /api/subscribers/
+    path('unsubscribe/<int:subscriber_id>/<str:token>/', unsubscribe_view, name='unsubscribe'),
+]

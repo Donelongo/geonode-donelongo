@@ -35,6 +35,8 @@ services:
       retries: 2
     environment:
       - IS_CELERY=False
+    volumes:
+      - ./media:/usr/src/app/media
     entrypoint: ["/usr/src/my_geonode/entrypoint.sh"]
     command: "uwsgi --ini /usr/src/my_geonode/uwsgi.ini"
 

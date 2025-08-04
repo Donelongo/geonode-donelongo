@@ -1,3 +1,4 @@
+# Dockerfile for GeoNode with ReportLab support
 FROM geonode/geonode-base:latest-ubuntu-22.04
 LABEL GeoNode development team
 

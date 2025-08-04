@@ -1,0 +1,7 @@
+services:
+  django:
+    volumes:
+      - ./media:/mnt/volumes/statics/uploaded/
+  geonode:
+    volumes:
+      - ./media:/mnt/volumes/statics/uploaded/
