@@ -2,7 +2,7 @@ from rest_framework import status, viewsets
 from rest_framework.response import Response
 from .models import Subscriber
 from .serializers import SubscriberSerializer
-from .utils import send_confirmation_email
+from .utils import send_confirmation_email, send_unsubscribe_confirmation_email
 import json
 from drf_spectacular.utils import extend_schema_view, extend_schema
 
@@ -67,29 +67,50 @@ class SubscriberViewSet(viewsets.ModelViewSet):
 # Unsubscribe view remains unchanged
 from django.shortcuts import render, get_object_or_404
 
+
 def unsubscribe_view(request, subscriber_id, token):
     try:
         subscriber = get_object_or_404(Subscriber, pk=subscriber_id)
 
         if subscriber.token == token and subscriber.is_active:
+            # Deactivate the subscriber
             subscriber.is_active = False
             subscriber.save(update_fields=['is_active'])
-            message = "You have been successfully unsubscribed."
-            status_code = 200
+
+            # Send the detailed, email-compatible confirmation email
+            # This function (in .utils) will use 'emails/unsubscribe_success_email_template.html'
+            send_unsubscribe_confirmation_email(subscriber)
+
+            # Render the simplified web confirmation page immediately
+            # This is 'emails/unsubscribe_web_confirmation.html'
+            return render(request, 'emails/unsubscribe_web_confirmation.html')
+
         elif not subscriber.is_active:
-            message = "You are already unsubscribed."
-            status_code = 200
+            # If the subscriber is already inactive, still show the success web page
+            # and optionally send a specific "already unsubscribed" email if needed.
+            return render(request, 'emails/unsubscribe_web_confirmation.html')
         else:
-            message = "Invalid unsubscribe link or token."
+            # Case for invalid token or mismatch
+            message = "The unsubscribe link is invalid or has expired."
             status_code = 400
+            # Render the web error page
+            return render(request, 'emails/unsubscribe_error_web.html', {
+                'message': message
+            }, status=status_code)
+
     except Subscriber.DoesNotExist:
         message = "Subscriber not found or invalid link."
         status_code = 404
+        # Render the web error page
+        return render(request, 'emails/unsubscribe_error_web.html', {
+            'message': message
+        }, status=status_code)
     except Exception as e:
-        message = f"An error occurred during unsubscription: {e}"
+        # Catch any other unexpected errors
+        message = f"An unexpected error occurred: {e}"
         status_code = 500
+        # Render the web error page
+        return render(request, 'emails/unsubscribe_error_web.html', {
+            'message': message
+        }, status=status_code)
 
-    return render(request, 'emails/unsubscribe_confirmation.html', {
-        'message': message,
-        'status': status_code
-    }, status=status_code)

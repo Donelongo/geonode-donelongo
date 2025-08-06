@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unsubscribe Error</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for Inter font */
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            line-height: 1.6;
+            color: #333;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex items-center justify-center p-4 sm:p-6">
+    <div class="max-w-md w-full bg-white rounded-xl shadow-2xl overflow-hidden border border-gray-100 p-8 text-center">
+        <!-- Header Section -->
+        <div class="bg-gradient-to-r from-red-500 to-red-700 p-6 text-white text-center rounded-t-lg">
+            <div class="text-5xl mb-3">❌</div> <!-- Cross emoji -->
+            <h1 class="text-3xl font-extrabold">Error!</h1>
+        </div>
+
+        <!-- Content Section -->
+        <div class="p-6 text-gray-800">
+            <p class="text-xl mb-4 font-medium text-red-700">An issue occurred with your unsubscribe request.</p>
+            <p class="text-lg text-gray-600">{{ message }}</p>
+            <p class="mt-4 text-base text-gray-500">Please try again or contact support if the issue persists.</p>
+        </div>
+
+        <!-- Footer Section -->
+        <div class="bg-gray-100 p-4 text-center text-gray-500 text-sm border-t border-gray-200 rounded-b-lg">
+            <p>You can safely close this window now.</p>
+            <p class="mt-2">&copy; 2025 Agro-Climate Advisory System.</p>
+        </div>
+    </div>
+</body>
+</html>

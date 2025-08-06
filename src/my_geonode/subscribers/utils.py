@@ -19,7 +19,7 @@ def send_new_advisory_email(advisory_message_instance):
     messages = []
 
     for subscriber in active_subscribers:
-        advisory_url = f"{settings.BASE_URL}/advisory/{advisory_message_instance.id}/"
+        advisory_url = "http://localhost:3000/advisory"
         pdf_download_url = f"{settings.BASE_URL}/advisory/{advisory_message_instance.id}/pdf/"
         unsubscribe_url = f"{settings.BASE_URL}/api/subscribers/unsubscribe/{subscriber.id}/{subscriber.token}/"
 
@@ -103,3 +103,38 @@ def send_confirmation_email(subscriber):
         print(f"✅ Successfully sent confirmation email to {subscriber.email}")
     except Exception as e:
         print(f"❌ Error sending confirmation email to {subscriber.email}: {e}")
+
+
+def send_unsubscribe_confirmation_email(subscriber):
+    subject = "You have unsubscribed from Agro Climate Advisory"
+    from_email = settings.DEFAULT_FROM_EMAIL
+    to_email = [subscriber.email]
+
+    try:
+        html_content = render_to_string(
+            'emails/unsubscribe_confirmation.html',
+            {
+                'subscriber_first_name': subscriber.first_name,
+                'subscriber_email': subscriber.email,
+            }
+        )
+    except TemplateDoesNotExist as e:
+        print(f"Unsubscribe confirmation email template not found: {e}")
+        html_content = None
+
+    text_content = (
+        f"Dear {subscriber.first_name or 'Subscriber'},\n\n"
+        f"You have successfully unsubscribed from the Agro Climate Advisory System.\n"
+        f"You will no longer receive updates at {subscriber.email}.\n\n"
+        f"Best regards,\nThe Agro Climate Advisory Team"
+    )
+
+    msg = EmailMultiAlternatives(subject, text_content, from_email, to_email)
+    if html_content:
+        msg.attach_alternative(html_content, "text/html")
+
+    try:
+        msg.send(fail_silently=False)
+        print(f"✅ Successfully sent unsubscribe confirmation email to {subscriber.email}")
+    except Exception as e:
+        print(f"❌ Error sending unsubscribe confirmation email to {subscriber.email}: {e}")
