@@ -4,6 +4,12 @@ from .models import Subscriber
 from .serializers import SubscriberSerializer
 from .utils import send_confirmation_email
 import json
+from drf_spectacular.utils import extend_schema_view, extend_schema
+
+@extend_schema_view(
+    list=extend_schema(summary="List subscribers"),
+    create=extend_schema(summary="Create subscriber"),
+)
 
 class SubscriberViewSet(viewsets.ModelViewSet):
     queryset = Subscriber.objects.all()

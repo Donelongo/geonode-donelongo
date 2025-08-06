@@ -22,6 +22,7 @@ from django.urls import include, path # Ensure 'include' and 'path' are imported
 from geonode.urls import urlpatterns as geonode_urlpatterns # Rename GeoNode's urlpatterns to avoid conflict
 from django.conf import settings
 from django.conf.urls.static import static
+from drf_spectacular.views import SpectacularAPIView
 
 # Start with GeoNode's default URL patterns
 urlpatterns = geonode_urlpatterns
@@ -39,6 +40,8 @@ urlpatterns = geonode_urlpatterns
 urlpatterns += [
     path('api/info_hub/', include('info_hub.urls')),
     path('api/subscribers/', include('subscribers.urls')),
+    path("schema/", SpectacularAPIView.as_view(), name="schema"),
+
 ]
 
 print("✅ Custom URL patterns loaded: info_hub and subscribers")

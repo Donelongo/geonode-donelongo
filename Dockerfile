@@ -61,6 +61,10 @@ RUN chmod +x tasks.py \
 RUN yes w | pip install --upgrade pip && \
     yes w | pip install --src /usr/src -r requirements.txt
 
+# Install CORS headers support for Django
+RUN yes w | pip install django-cors-headers
+
+
 # --- ADD THIS NEW RUN COMMAND FOR REPORTLAB ---
 RUN yes w | pip install reportlab
 # -----------------------------------------------

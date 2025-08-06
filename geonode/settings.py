@@ -292,7 +292,9 @@ LOCAL_MEDIA_URL = os.getenv("LOCAL_MEDIA_URL", f"{FORCE_SCRIPT_NAME}/{MEDIAFILES
 
 # Absolute path to the directory that holds static files like app media.
 # Example: "/home/media/media.lawrence.com/apps/"
-STATIC_ROOT = os.getenv("STATIC_ROOT", os.path.join(PROJECT_ROOT, "static_root"))
+# STATIC_ROOT = os.getenv("STATIC_ROOT", os.path.join(PROJECT_ROOT, "static_root"))
+STATIC_ROOT = "/mnt/volumes/statics/static"
+
 
 # Absolute path to the directory that hold assets files
 # This dir should not be made publicly accessible by nginx, since its content may be private

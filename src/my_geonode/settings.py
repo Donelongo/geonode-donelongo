@@ -24,6 +24,11 @@ import sys
 import ast
 import json
 
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
 
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "django,localhost").split(",")
 
