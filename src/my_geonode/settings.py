@@ -81,6 +81,7 @@ if PROJECT_NAME not in INSTALLED_APPS:
 INSTALLED_APPS += (
     'info_hub.apps.InfoHubConfig',
     'subscribers',
+    'contact',
 )
 
 # Location of url mappings

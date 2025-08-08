@@ -20,7 +20,9 @@ def send_new_advisory_email(advisory_message_instance):
 
     for subscriber in active_subscribers:
         advisory_url = "http://localhost:3000/advisory"
-        pdf_download_url = f"{settings.BASE_URL}/advisory/{advisory_message_instance.id}/pdf/"
+        # pdf_download_url = f"{settings.BASE_URL}/advisory/{advisory_message_instance.id}/pdf/"
+        path_to_pdf = reverse('info_hub:advisory_pdf', kwargs={'advisory_id': advisory_message_instance.id})
+        pdf_download_url = f"{settings.BASE_URL}{path_to_pdf}"
         unsubscribe_url = f"{settings.BASE_URL}/api/subscribers/unsubscribe/{subscriber.id}/{subscriber.token}/"
 
         html_message = render_to_string(

@@ -1,9 +1,7 @@
-# agro_advisory_system/info_hub/urls.py (Ensure this is EXACTLY what you have)
+# my_geonode/info_hub/urls.py (Ensure this is EXACTLY what you have)
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
-from .views import test_email_view
-from info_hub.views import download_advisory_pdf
 
 
 app_name = 'info_hub' # <--- CRITICAL: Make sure this line is present and correct
@@ -15,7 +13,6 @@ router.register(r'diseases', views.DiseaseViewSet, basename='disease')
 urlpatterns = [
     path('', include(router.urls)),
     # This line is the key for the PDF download:
-    path('advisory/<int:advisory_id>/pdf/', download_advisory_pdf, name='advisory_pdf'),
-    path('test-email/', test_email_view, name='test_email'),
+    path('advisory/<int:advisory_id>/pdf/', views.download_advisory_pdf, name='advisory_pdf'),
 
 ]

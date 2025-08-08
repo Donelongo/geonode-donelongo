@@ -1,4 +1,4 @@
-# agro_advisory_system/info_hub/serializers.py
+# my_geonode/info_hub/serializers.py
 from rest_framework import serializers
 from .models import AdvisoryMessage, Disease # Make sure Disease is imported
 

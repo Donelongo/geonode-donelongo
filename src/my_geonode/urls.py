@@ -41,6 +41,7 @@ urlpatterns += [
     path('api/info_hub/', include('info_hub.urls')),
     path('api/subscribers/', include('subscribers.urls')),
     path("schema/", SpectacularAPIView.as_view(), name="schema"),
+    path('api/contact/', include('contact.urls')),
 
 ]
 

@@ -1,4 +1,4 @@
-# agro_advisory_system/info_hub/views.py
+# my_geonode/info_hub/views.py
 from rest_framework import viewsets
 from rest_framework.decorators import action, api_view
 from rest_framework.response import Response
@@ -8,6 +8,8 @@ from django.http import HttpResponse
 from .models import AdvisoryMessage, Disease
 from .serializers import AdvisoryMessageSerializer, DiseaseSerializer
 from django.http import JsonResponse
+import requests
+
 
 
 
@@ -20,23 +22,11 @@ from reportlab.lib.enums import TA_LEFT, TA_RIGHT, TA_CENTER, TA_JUSTIFY
 from io import BytesIO
 import os # To check for file existence
 
-
 from django.core.mail import send_mail
 from django.conf import settings
 
-def test_email_view(request):
-    try:
-        send_mail(
-            subject="📬 Test Advisory Email",
-            message="This is a test advisory email sent from Django.",
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=["dagmawieliaswork@gmail.com"],  # Replace this with your email
-            fail_silently=False,
-        )
-        return JsonResponse({"message": "✅ Test email sent successfully."})
-    except Exception as e:
-        return JsonResponse({"error": str(e)}, status=500)
-
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
 
 
 class AdvisoryMessageViewSet(viewsets.ReadOnlyModelViewSet):
@@ -62,8 +52,10 @@ class DiseaseViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Disease.objects.all().order_by('name')
     serializer_class = DiseaseSerializer
 
+
 # UPDATED VIEW FUNCTION TO DOWNLOAD ADVISORY CONTENT AS PDF
 @api_view(['GET'])
+@permission_classes([AllowAny]) # <--- ADD THIS LINE
 def download_advisory_pdf(request, advisory_id):
     """
     Generates and serves a PDF of the advisory content for a given AdvisoryMessage
@@ -82,15 +74,15 @@ def download_advisory_pdf(request, advisory_id):
 
     # Define custom styles (use styles.add for NEW names, modify directly for EXISTING ones)
     styles.add(ParagraphStyle(name='AdvisoryTitle',
-                              parent=styles['h1'],
-                              fontSize=18,
-                              spaceAfter=14,
-                              alignment=TA_CENTER))
+                            parent=styles['h1'],
+                            fontSize=18,
+                            spaceAfter=14,
+                            alignment=TA_CENTER))
     styles.add(ParagraphStyle(name='SectionTitle',
-                              parent=styles['h2'],
-                              fontSize=14,
-                              spaceBefore=12,
-                              spaceAfter=6))
+                            parent=styles['h2'],
+                            fontSize=14,
+                            spaceBefore=12,
+                            spaceAfter=6))
 
     # --- FIX HERE: Modify the existing 'BodyText' style directly ---
     styles['BodyText'].fontSize = 10
@@ -101,9 +93,9 @@ def download_advisory_pdf(request, advisory_id):
     # If you wanted a completely new style for body text, you'd use a different 'name' like 'MyCustomBodyText'.
 
     styles.add(ParagraphStyle(name='KeyValue',
-                              parent=styles['Normal'],
-                              fontSize=10,
-                              spaceAfter=4))
+                            parent=styles['Normal'],
+                            fontSize=10,
+                            spaceAfter=4))
 
 
     # --- Document Header ---
@@ -152,17 +144,23 @@ def download_advisory_pdf(request, advisory_id):
         Story.append(Spacer(1, 0.2 * inch))
 
     # --- Featured Image ---
-    if advisory.featured_image_file and os.path.exists(advisory.featured_image_file.path):
-        try:
-            # Create an Image flowable
-            # You might need to adjust width/height or use a ratio for proper scaling
-            # Let's target a width and scale proportionally
-            img = Image(advisory.featured_image_file.path)
-            img_width = 4 * inch # Example width
-            img_height = img.drawHeight * (img_width / img.drawWidth) # Maintain aspect ratio
+    # info_hub/views.py
 
-            # Ensure image fits within page width
-            if img_width > (letter[0] - 2 * inch): # letter[0] is width of page, 2*inch is for margins (1 inch on each side)
+# --- Featured Image ---
+    if advisory.featured_image_file:
+        try:
+            image_url = request.build_absolute_uri(advisory.featured_image_file.url)
+            response = requests.get(image_url, timeout=10)
+            response.raise_for_status()
+
+            image_data = BytesIO(response.content)
+            img = Image(image_data)
+
+            # --- ADD THIS LOGIC BACK IN ---
+            img_width = 4 * inch
+            img_height = img.drawHeight * (img_width / img.drawWidth)
+
+            if img_width > (letter[0] - 2 * inch):
                 img_width = letter[0] - 2 * inch
                 img_height = img.drawHeight * (img_width / img.drawWidth)
 
@@ -173,8 +171,9 @@ def download_advisory_pdf(request, advisory_id):
             Story.append(Spacer(1, 0.1 * inch))
             Story.append(img)
             Story.append(Spacer(1, 0.2 * inch))
+            # --- END OF ADDED LOGIC ---
+
         except Exception as e:
-            # Handle cases where image might be corrupt or not readable by ReportLab
             Story.append(Paragraph(f"<i>Could not load featured image: {e}</i>", styles['BodyText']))
             print(f"Error loading image for PDF: {e}")
 
