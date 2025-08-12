@@ -20,13 +20,12 @@
 
 from django.urls import include, path  # Ensure 'include' and 'path' are imported
 from django.views.generic import TemplateView, RedirectView
-from geonode.urls import urlpatterns as geonode_urlpatterns # Rename GeoNode's urlpatterns to avoid conflict
+from geonode.urls import urlpatterns as geonode_core_urlpatterns
 from django.conf import settings
 from django.conf.urls.static import static
 from drf_spectacular.views import SpectacularAPIView
 
-# Start with GeoNode's default URL patterns
-urlpatterns = geonode_urlpatterns
+urlpatterns = geonode_core_urlpatterns
 
 # You can register your own urlpatterns here
 # Example of adding a custom homepage (uncomment and modify if needed):
@@ -44,15 +43,21 @@ urlpatterns += [
     path("schema/", SpectacularAPIView.as_view(), name="schema"),
     path('api/contact/', include('contact.urls')),
     # React embedded pages – align Django entrypoints with React Router paths (singular)
-    path('advisory', TemplateView.as_view(template_name='frontend/app.html'), name='advisory'),
+    path('advisory', TemplateView.as_view(template_name='frontend/app.html'), name='advisory'),  # React
     path('disease', TemplateView.as_view(template_name='frontend/app.html'), name='disease'),
     # Backwards-compatible / plural forms redirect to singular (avoid React "No routes matched" warning)
     path('advisories', RedirectView.as_view(url='/advisory', permanent=False)),
     path('diseases', RedirectView.as_view(url='/disease', permanent=False)),
+    # Other React top-level pages (allow hard refresh / direct access)
+    path('suitability-map', TemplateView.as_view(template_name='frontend/app.html'), name='suitability_map'),
+    path('risk-map', TemplateView.as_view(template_name='frontend/app.html'), name='risk_map'),
+    path('about', TemplateView.as_view(template_name='frontend/app.html'), name='about'),
+    path('contact', TemplateView.as_view(template_name='frontend/app.html'), name='contact'),
+    path('terms-and-conditions', TemplateView.as_view(template_name='frontend/app.html'), name='terms_and_conditions'),
 
 ]
 
-print("✅ Custom URL patterns loaded: info_hub and subscribers")
+print("✅ Custom URL patterns loaded (GeoNode at root; React pages added; middleware protects GeoNode core)")
 
 # ---------------------------
 

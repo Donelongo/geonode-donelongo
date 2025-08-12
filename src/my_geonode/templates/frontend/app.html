@@ -20,7 +20,8 @@
        If you later enable code-splitting with a runtime file ensure it's added before main. -->
   <script>
     // Provide a PUBLIC_URL equivalent if any library expects it
-    window.PUBLIC_URL = '{% get_static_prefix %}frontend';
+  // Must end with a trailing slash so runtime concatenations like PUBLIC_URL + 'static/media/...' are correct
+  window.PUBLIC_URL = '{% get_static_prefix %}frontend/';
   </script>
   <script src="{% static 'frontend/static/js/main.dfd2fb15.js' %}" defer></script>
 </body>

@@ -49,6 +49,13 @@ RUN mkdir -p /usr/src/my_geonode/static/frontend
 # Copy the built React app FROM THE 'builder' STAGE into your GeoNode static files
 COPY --from=builder /usr/src/app/frontend/build /usr/src/my_geonode/static/frontend/
 
+# Expose media assets also at /static/media (some CRA bundles resolve to /static/media/*)
+RUN if [ -d /usr/src/my_geonode/static/frontend/static/media ]; then \
+    mkdir -p /usr/src/my_geonode/static/media && \
+    cp -r /usr/src/my_geonode/static/frontend/static/media/* /usr/src/my_geonode/static/media/; \
+    echo "Duplicated CRA media assets to /usr/src/my_geonode/static/media"; \
+    fi
+
 # Set working directory
 WORKDIR /usr/src/my_geonode
 

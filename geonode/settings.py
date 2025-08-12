@@ -179,6 +179,12 @@ USE_TZ = True
 USE_I18N = ast.literal_eval(os.getenv("USE_I18N", "True"))
 USE_L10N = ast.literal_eval(os.getenv("USE_I18N", "True"))
 
+# --- Custom override: disable i18n patterns so we can mount GeoNode under /data/ ---
+# When GeoNode's root URLs use i18n_patterns they cannot be included under a prefix.
+# Setting USE_I18N False ensures geonode.urls produces plain patterns, avoiding
+# 'ImproperlyConfigured: Using i18n_patterns in an included URLconf is not allowed.'
+USE_I18N = False
+
 # Language code for this installation. All choices can be found here:
 # http://www.i18nguy.com/unicode/language-identifiers.html
 LANGUAGE_CODE = os.getenv("LANGUAGE_CODE", "en")
@@ -270,7 +276,7 @@ _DEFAULT_LOCALE_PATHS = (os.path.join(PROJECT_ROOT, "locale"),)
 LOCALE_PATHS = os.getenv("LOCALE_PATHS", _DEFAULT_LOCALE_PATHS)
 
 # Location of url mappings
-ROOT_URLCONF = os.getenv("ROOT_URLCONF", "geonode.urls")
+ROOT_URLCONF = os.getenv("ROOT_URLCONF", "my_geonode.urls")
 
 # ########################################################################### #
 # MEDIA / STATICS STORAGES SETTINGS
@@ -330,6 +336,9 @@ STATICFILES_FINDERS = (
     "django.contrib.staticfiles.finders.AppDirectoriesFinder",
     # 'django.contrib.staticfiles.finders.DefaultStorageFinder',
 )
+
+# Insert custom middleware later (after AuthenticationMiddleware)
+CUSTOM_MIDDLEWARE = "my_geonode.middleware.RequireLoginForDataMiddleware"
 
 MEMCACHED_ENABLED = ast.literal_eval(os.getenv("MEMCACHED_ENABLED", "False"))
 MEMCACHED_BACKEND = os.getenv("MEMCACHED_BACKEND", "django.core.cache.backends.memcached.PyLibMCCache")
@@ -821,6 +830,8 @@ MIDDLEWARE = (
     "django.middleware.locale.LocaleMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    # Protect core GeoNode sections while leaving React pages public
+    "my_geonode.middleware.RequireLoginForProtectedGeoNode",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",  # ref to: http://whitenoise.evans.io/en/stable/django.html#enable-whitenoise
