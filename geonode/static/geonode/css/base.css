@@ -235,6 +235,8 @@ th {
   }
   .navbar {
     display: none;
+    background: #ffeb3b !important; /* bright yellow for testing */
+
   }
   .btn > .caret,
   .dropup > .btn > .caret {

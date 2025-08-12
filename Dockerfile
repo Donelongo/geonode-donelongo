@@ -1,11 +1,25 @@
-# Dockerfile for GeoNode with ReportLab support
+# ---- Stage 1: Build React App ----
+# This stage uses a Node.js image to build your frontend.
+# It's a temporary stage that will be discarded later.
+FROM node:18-alpine AS builder
+
+# Set the working directory for the frontend build
+WORKDIR /usr/src/app/frontend
+COPY ./agro-climate-advisory-system-frontend/package*.json ./
+RUN npm install --legacy-peer-deps
+COPY ./agro-climate-advisory-system-frontend/ ./
+RUN npm run build
+
+
+# ---- Stage 2: Build The Final GeoNode App ----
+# This is your original Dockerfile, which now starts here.
 FROM geonode/geonode-base:latest-ubuntu-22.04
 LABEL GeoNode development team
 
 # Ensure the target directory exists in the container
 RUN mkdir -p /usr/src/my_geonode
 
-# Install system dependencies (including new ones for reportlab)
+# Install system dependencies
 RUN apt-get update -y && \
     apt-get install -y \
     curl wget unzip gnupg2 locales \
@@ -18,37 +32,37 @@ RUN sed -i -e 's/# C.UTF-8 UTF-8/C.UTF-8 UTF-8/' /etc/locale.gen && \
 ENV LC_ALL C.UTF-8
 ENV LANG C.UTF-8
 
-# Set PIP environment variables for better download resilience
+# Set PIP environment variables
 ENV PIP_DEFAULT_TIMEOUT=300
 ENV PIP_RETRIES=10
 ENV PIP_NO_CACHE_DIR=off
 
-# Add /usr/src to PYTHONPATH so Python can find 'my_geonode' as a module
+# Add /usr/src to PYTHONPATH
 ENV PYTHONPATH=/usr/src:${PYTHONPATH}
 
-# Copy the core Django project (my_geonode and its apps like info_hub)
-# from host's src/my_geonode to container's /usr/src/my_geonode
+# Copy the core Django project
 COPY src/my_geonode /usr/src/my_geonode/
 
-# Set working directory inside the container to the project root
+# <<-- THE MAGIC STEP -->>
+# Create the target directory for the frontend build
+RUN mkdir -p /usr/src/my_geonode/static/frontend
+# Copy the built React app FROM THE 'builder' STAGE into your GeoNode static files
+COPY --from=builder /usr/src/app/frontend/build /usr/src/my_geonode/static/frontend/
+
+# Set working directory
 WORKDIR /usr/src/my_geonode
 
-# Copy individual scripts from host's src/ directory to the container's WORKDIR (./ = /usr/src/my_geonode)
+# Copy remaining project files and scripts
 COPY src/tasks.py .
 COPY src/entrypoint.sh .
 COPY src/manage.py .
 COPY src/requirements.txt .
-
-# Copy global utility scripts to /usr/bin/ with their intended names
 COPY src/wait-for-databases.sh /usr/bin/wait-for-databases
 COPY src/celery.sh /usr/bin/celery-commands
 COPY src/celery-cmd /usr/bin/celery-cmd
-
-
 COPY src/uwsgi.ini /usr/src/my_geonode/uwsgi.ini
 
-
-# Set execute permissions for all necessary scripts
+# Set execute permissions
 RUN chmod +x tasks.py \
     && chmod +x entrypoint.sh \
     && chmod +x manage.py \
@@ -56,35 +70,18 @@ RUN chmod +x tasks.py \
     && chmod +x /usr/bin/celery-commands \
     && chmod +x /usr/bin/celery-cmd
 
-# Install Python dependencies from requirements.txt
-# Upgrade pip first to get better download resilience
+# Install Python dependencies
 RUN yes w | pip install --upgrade pip && \
     yes w | pip install --src /usr/src -r requirements.txt
 
-# Install CORS headers support for Django
+# Install other Python packages
 RUN yes w | pip install django-cors-headers
-
-
-# --- ADD THIS NEW RUN COMMAND FOR REPORTLAB ---
 RUN yes w | pip install reportlab
-# -----------------------------------------------
 
-# This line is for debugging, keep it for now.
-RUN pip show reportlab
-
-# Install "geonode-contribs" apps (if uncommented in your original, keep it. Otherwise, leave commented)
-# RUN cd /usr/src; git clone https://github.com/GeoNode/geonode-contribs.git -b master
-# Install logstash and centralized dashboard dependencies (if uncommented in your original, keep it. Otherwise, leave commented)
-# RUN cd /usr/src/geonode-contribs/geonode-logstash; pip install --upgrade   -e . \
-#     cd /usr/src/geonode-contribs/ldap; pip install --upgrade   -e .
-
-# Cleanup apt update lists
+# Cleanup
 RUN apt-get autoremove --purge -y && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
 # Export ports
 EXPOSE 8000
-
-# We provide no command or entrypoint as this image can be used to serve the django project or run celery tasks
-# ENTRYPOINT /usr/src/my_geonode/entrypoint.sh

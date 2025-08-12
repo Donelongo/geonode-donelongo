@@ -1,0 +1,27 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Advisory & Disease Portal</title>
+  <link rel="icon" href="{% static 'frontend/favicon.ico' %}" />
+  <link rel="manifest" href="{% static 'frontend/manifest.json' %}">
+  <link rel="stylesheet" href="{% static 'frontend/static/css/main.6f7b1462.css' %}">
+  <style>
+    /* Temp visual indicator so we know this template loaded */
+    body { border-top: 6px solid #ff6a00; }
+  </style>
+</head>
+<body>
+  <div id="root">Loading...</div>
+  <!-- CRA build normally injects chunk files automatically via index.html processing.
+       We include main bundle; dynamic import chunks will be fetched as needed.
+       If you later enable code-splitting with a runtime file ensure it's added before main. -->
+  <script>
+    // Provide a PUBLIC_URL equivalent if any library expects it
+    window.PUBLIC_URL = '{% get_static_prefix %}frontend';
+  </script>
+  <script src="{% static 'frontend/static/js/main.dfd2fb15.js' %}" defer></script>
+</body>
+</html>

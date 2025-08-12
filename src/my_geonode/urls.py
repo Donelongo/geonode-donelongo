@@ -18,7 +18,8 @@
 #
 #########################################################################
 
-from django.urls import include, path # Ensure 'include' and 'path' are imported
+from django.urls import include, path  # Ensure 'include' and 'path' are imported
+from django.views.generic import TemplateView, RedirectView
 from geonode.urls import urlpatterns as geonode_urlpatterns # Rename GeoNode's urlpatterns to avoid conflict
 from django.conf import settings
 from django.conf.urls.static import static
@@ -42,6 +43,12 @@ urlpatterns += [
     path('api/subscribers/', include('subscribers.urls')),
     path("schema/", SpectacularAPIView.as_view(), name="schema"),
     path('api/contact/', include('contact.urls')),
+    # React embedded pages – align Django entrypoints with React Router paths (singular)
+    path('advisory', TemplateView.as_view(template_name='frontend/app.html'), name='advisory'),
+    path('disease', TemplateView.as_view(template_name='frontend/app.html'), name='disease'),
+    # Backwards-compatible / plural forms redirect to singular (avoid React "No routes matched" warning)
+    path('advisories', RedirectView.as_view(url='/advisory', permanent=False)),
+    path('diseases', RedirectView.as_view(url='/disease', permanent=False)),
 
 ]
 
