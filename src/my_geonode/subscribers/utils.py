@@ -19,8 +19,13 @@ def send_new_advisory_email(advisory_message_instance):
     connection = get_connection()
     messages = []
 
+    base = getattr(settings, 'SITEURL', getattr(settings, 'BASE_URL', 'http://localhost:3500/'))
+    if not base.endswith('/'):
+        base = base + '/'
+    advisory_url_base = base + 'advisory'
+
     for subscriber in active_subscribers:
-        advisory_url = "http://localhost:3000/advisory"
+        advisory_url = advisory_url_base
         # pdf_download_url = f"{settings.BASE_URL}/advisory/{advisory_message_instance.id}/pdf/"
         path_to_pdf = reverse('info_hub:advisory_pdf', kwargs={'advisory_id': advisory_message_instance.id})
         pdf_download_url = f"{settings.BASE_URL}{path_to_pdf}"
