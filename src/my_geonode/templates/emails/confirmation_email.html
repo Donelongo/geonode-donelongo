@@ -1,66 +1,73 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Subscription Confirmation</title>
-    <!-- Tailwind CSS CDN for easy styling -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Subscription Confirmed</title>
     <style>
-        /* Custom styles for Inter font and general body styling */
-        body {
-            font-family: 'Inter', sans-serif;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-            line-height: 1.6;
-            color: #333;
-            background-color: #f8f8f8; /* Light background for the page */
-        }
-        /* Ensure the email container is centered and has max width */
-        .email-container {
-            max-width: 600px;
-            margin: 20px auto;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); /* Subtle shadow for depth */
-        }
-        /* Responsive adjustments for smaller screens */
-        @media (max-width: 640px) {
-            .email-container {
-                margin: 10px;
-                border-radius: 0; /* Remove border-radius on small screens for full width */
-            }
-        }
+        body {margin:0;padding:0;background:#f5f7fa;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;color:#2d3748;-webkit-font-smoothing:antialiased;}
+        a {color:#157347;text-decoration:none;}
+        a:hover {text-decoration:underline;}
+        .wrapper {width:100%;background:#f5f7fa;padding:24px 0;}
+        .container {max-width:640px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,.06);border:1px solid #e2e8f0;}
+        .header {background:linear-gradient(120deg,#15803d,#16a34a,#22c55e);padding:32px 28px;text-align:center;color:#fff;}
+        .badge {display:inline-block;background:rgba(255,255,255,.15);padding:4px 12px;border-radius:999px;font-size:12px;letter-spacing:.5px;text-transform:uppercase;margin-bottom:14px;}
+        h1 {margin:0;font-size:30px;line-height:1.2;font-weight:700;}
+        .content {padding:32px 34px;font-size:16px;line-height:1.6;}
+        .highlight {color:#166534;font-weight:600;}
+        .cta {text-align:center;margin:32px 0 8px;}
+        .button {background:#d97706;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff !important;padding:14px 30px;font-size:15px;font-weight:600;border-radius:40px;display:inline-block;box-shadow:0 4px 10px rgba(217,119,6,.35);}
+        .button:hover {background:#b45309;}
+        .divider {height:1px;background:#edf2f7;margin:36px 0;}
+        .metrics {display:flex;flex-wrap:wrap;gap:14px;justify-content:space-between;margin:0 -4px 8px;}
+        .metric {flex:1 1 140px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:12px;padding:14px 16px;text-align:center;}
+        .metric h3 {margin:0 0 4px;font-size:13px;font-weight:600;color:#475569;letter-spacing:.5px;text-transform:uppercase;}
+        .metric p {margin:0;font-size:18px;font-weight:700;color:#0f766e;}
+        .footer {background:#f8fafc;padding:26px 30px;text-align:center;font-size:12px;color:#64748b;border-top:1px solid #e2e8f0;}
+        .footer a {color:#0f766e;}
+        .small {font-size:13px;color:#475569;margin:18px 0 0;}
+        @media (max-width:540px){.content{padding:26px 22px;} .metrics{flex-direction:column;} .metric{flex:1 1 auto;} h1{font-size:26px;} }
     </style>
 </head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4 sm:p-6">
-    <div class="email-container bg-white rounded-lg overflow-hidden border border-gray-200">
-        <!-- Header Section -->
-        <div class="header bg-green-600 text-white p-6 text-center rounded-t-lg">
-            <h2 class="text-3xl font-bold mb-2">Welcome to the Family!</h2>
-            <p class="text-lg">Your subscription is confirmed.</p>
-        </div>
-
-        <!-- Content Section -->
-        <div class="content p-8 text-gray-700">
-            <p class="text-lg mb-4">Dear Valued Subscriber,</p>
-            <p class="mb-4">We're absolutely thrilled to confirm your successful subscription to the **Agro-Climate Advisory System**!</p>
-            <p class="mb-4">Get ready to receive timely, actionable updates and important advisories directly to your inbox. Our goal is to empower you with the knowledge you need to make informed decisions for your agricultural endeavors.</p>
-            <p class="mb-6">We're excited to have you on board and look forward to helping you stay informed and thrive!</p>
-
-            <!-- Call to Action Button -->
-            <div class="text-center">
-                <a href="#" class="inline-block bg-green-500 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-full transition duration-300 ease-in-out shadow-lg hover:shadow-xl">
-                    Explore Our System
-                </a>
+<body>
+    <div class="wrapper">
+        <div class="container">
+            <div class="header">
+                <div class="badge">Agro‑Climate Advisory</div>
+                {% if subscriber_first_name %}
+                <h1>Welcome Aboard {{ subscriber_first_name|title }}!</h1>
+                {% else %}
+                <h1>Welcome Aboard!</h1>
+                {% endif %}
+                <p style="margin:10px 0 0;font-size:15px;opacity:.95;">Your subscription is confirmed.</p>
             </div>
-
-            <p class="mt-8 text-sm">Best regards,<br><span class="font-semibold">The Agro-Climate Advisory Team</span></p>
-        </div>
-
-        <!-- Footer Section -->
-        <div class="footer bg-gray-50 text-center text-gray-500 text-xs p-6 border-t border-gray-200 rounded-b-lg">
-            <p class="mb-2">This email was sent to a valued subscriber of the Agro-Climate Advisory System.</p>
-            <p>If you have any questions or need assistance, please don't hesitate to <a href="#" class="text-green-600 hover:underline">contact our support team</a>.</p>
-            <p class="mt-4">&copy; 2025 Agro-Climate Advisory System. All rights reserved.</p>
+            <div class="content">
+                <p>Hi {{ subscriber_first_name|default:'Friend'|title }},</p>
+                <p>We're excited to have you in the <span class="highlight">Agro‑Climate Advisory System</span>. From now on you'll receive concise, timely updates to help you manage <strong>rainfall variability</strong>, anticipate <strong>temperature extremes</strong>, and reduce <strong>production risks</strong>.</p>
+                <p style="margin-top:18px;">Here's what to expect next:</p>
+                <ul style="padding-left:20px;margin:10px 0 20px;">
+                    <li><strong>Advisory Bulletins</strong> with actionable guidance.</li>
+                    <li><strong>Early Risk Signals</strong> when conditions shift.</li>
+                    <li><strong>Practical Tips</strong> tailored to seasonal context.</li>
+                </ul>
+                <div class="cta">
+                    <a href="{{ explore_url|default:'#' }}" class="button">Explore the Portal</a>
+                </div>
+                <p class="small">Need help or have ideas? <a href="{{ support_url|default:'#' }}">Reach out to the team</a>.</p>
+                <div class="divider"></div>
+                <div class="metrics">
+                    <div class="metric"><h3>Focus</h3><p>Resilience</p></div>
+                    <div class="metric"><h3>Coverage</h3><p>Regional</p></div>
+                    <div class="metric"><h3>Updates</h3><p>Monthly</p></div>
+                    <div class="metric"><h3>Format</h3><p>Actionable</p></div>
+                </div>
+                <div class="divider"></div>
+                <p style="font-size:13px;color:#64748b;line-height:1.5;">If you didn't request this subscription you can <a href="{{ unsubscribe_url }}">unsubscribe instantly</a>. No questions asked.</p>
+            </div>
+            <div class="footer">
+                <p style="margin:0 0 6px;">&copy; 2025 Agro‑Climate Advisory System. All rights reserved.</p>
+                <p style="margin:0;">Delivered to <strong>{{ subscriber_email }}</strong></p>
+            </div>
         </div>
     </div>
 </body>

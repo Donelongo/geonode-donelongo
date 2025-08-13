@@ -10,9 +10,11 @@ def send_welcome_email_task(subscriber_id):
         subject = "🌱 Welcome to the Agro-Climate Advisory Service"
 
         html_message = render_to_string("emails/confirmation_email.html", {
-            "subscriber_first_name": subscriber.first_name,
-            "subscriber_email": subscriber.email
-        })
+                    "subscriber_first_name": subscriber.first_name,
+                    "subscriber_email": subscriber.email,
+                    "explore_url": "{0}advisory".format(getattr(__import__('django.conf').conf.settings,'SITEURL','/')),
+                    "support_url": "{0}contact".format(getattr(__import__('django.conf').conf.settings,'SITEURL','/')),
+                })
 
         plain_message = f"Welcome, {subscriber.email}!\n\nThank you for subscribing."
 

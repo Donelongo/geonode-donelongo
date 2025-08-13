@@ -1,6 +1,7 @@
 # my_geonode/subscribers/utils.py
 from django.core.mail import EmailMessage, EmailMultiAlternatives, get_connection
 from django.template.loader import render_to_string, TemplateDoesNotExist
+from django.template import TemplateSyntaxError
 from django.conf import settings
 from django.urls import reverse
 
@@ -68,49 +69,74 @@ Unsubscribe: {unsubscribe_url}
         print(f"❌ Error sending advisory emails: {e}")
 
 
-def send_confirmation_email(subscriber):
+def send_confirmation_email(subscriber) -> bool:
+    """Simpler confirmation email send using EmailMessage like advisory sender."""
     subject = "Welcome to Agro Climate Advisory - Subscription Confirmed!"
-    from_email = settings.DEFAULT_FROM_EMAIL
-    to_email = [subscriber.email]
-
     unsubscribe_url = f"{settings.BASE_URL}{reverse('subscribers:unsubscribe', args=[subscriber.id, subscriber.token])}"
-
+    explore_url = f"{getattr(settings,'SITEURL', settings.BASE_URL)}advisory"
+    support_url = f"{getattr(settings,'SITEURL', settings.BASE_URL)}contact"
+    print(f"[CONFIRMATION] START subscriber={subscriber.email} backend={settings.EMAIL_BACKEND}", flush=True)
+    # Extra diagnostics (mask password) to understand why email might not send
     try:
-        html_content = render_to_string(
-            'emails/confirmation_email.html',
-            {
-                'subscriber_first_name': subscriber.first_name,
-                'subscriber_email': subscriber.email,
-                'unsubscribe_url': unsubscribe_url,
-            }
+        masked_user = (settings.EMAIL_HOST_USER[:2] + "***" + settings.EMAIL_HOST_USER[-2:]) if getattr(settings, 'EMAIL_HOST_USER', None) else None
+        print(
+            f"[CONFIRMATION][DEBUG] host={getattr(settings,'EMAIL_HOST',None)} port={getattr(settings,'EMAIL_PORT',None)} tls={getattr(settings,'EMAIL_USE_TLS',None)} ssl={getattr(settings,'EMAIL_USE_SSL',None)} user={masked_user}",
+            flush=True,
         )
-    except TemplateDoesNotExist as e:
-        print(f"Confirmation email template not found: {e}")
-        html_content = None
-
-    text_content = (
-        f"Dear {subscriber.first_name or 'Subscriber'},\n\n"
-        f"Thank you for subscribing to the Agro Climate Advisory System.\n"
-        f"You'll now receive updates at {subscriber.email}.\n\n"
-        f"If you ever want to unsubscribe, click here:\n{unsubscribe_url}\n\n"
-        f"Best regards,\nThe Agro Climate Advisory Team"
-    )
-
-    msg = EmailMultiAlternatives(subject, text_content, from_email, to_email)
-    if html_content:
-        msg.attach_alternative(html_content, "text/html")
-
+    except Exception as diag_e:
+        print(f"[CONFIRMATION][DEBUG] unable to print SMTP diagnostics: {diag_e}", flush=True)
     try:
-        msg.send(fail_silently=False)
-        print(f"✅ Successfully sent confirmation email to {subscriber.email}")
+        html_body = render_to_string('emails/confirmation_email.html', {
+            'subscriber_first_name': subscriber.first_name,
+            'subscriber_email': subscriber.email,
+            'unsubscribe_url': unsubscribe_url,
+            'explore_url': explore_url,
+            'support_url': support_url,
+        })
+    except (TemplateDoesNotExist, TemplateSyntaxError) as tmpl_err:
+        print(f"[CONFIRMATION][TEMPLATE_FALLBACK] {tmpl_err}", flush=True)
+        html_body = None
+    if not html_body:
+        html_body = f"<p>Welcome {subscriber.first_name or 'Subscriber'}!</p><p>Explore: {explore_url}</p><p>Unsubscribe: {unsubscribe_url}</p>"
+    backend = get_connection()
+    try:
+        # If it's SMTPBackend, open early to capture connection errors explicitly
+        backend.open()
+        print(f"[CONFIRMATION][DEBUG] connection opened successfully", flush=True)
+    except Exception as open_err:
+        print(f"[CONFIRMATION][ERROR] opening connection failed: {open_err}", flush=True)
+    msg = EmailMessage(subject=subject,
+                       body=html_body,
+                       from_email=settings.DEFAULT_FROM_EMAIL or 'no-reply@localhost',
+                       to=[subscriber.email],
+                       connection=backend)
+    msg.content_subtype = 'html'
+    try:
+        sent = msg.send(fail_silently=False)
+        print(f"[CONFIRMATION] SENT={sent} subscriber={subscriber.email}", flush=True)
+        if sent:
+            return True
     except Exception as e:
-        print(f"❌ Error sending confirmation email to {subscriber.email}: {e}")
+        print(f"[CONFIRMATION] ERROR subscriber={subscriber.email} err={e}", flush=True)
+    # fallback console
+    if settings.EMAIL_BACKEND != 'django.core.mail.backends.console.EmailBackend':
+        try:
+            console_conn = get_connection('django.core.mail.backends.console.EmailBackend')
+            msg.connection = console_conn
+            msg.send(fail_silently=True)
+            print(f"[CONFIRMATION] FALLBACK_CONSOLE subscriber={subscriber.email}", flush=True)
+        except Exception as ee:
+            print(f"[CONFIRMATION] FALLBACK_FAIL subscriber={subscriber.email} err={ee}", flush=True)
+    return False
+
 
 
 def send_unsubscribe_confirmation_email(subscriber):
     subject = "You have unsubscribed from Agro Climate Advisory"
     from_email = settings.DEFAULT_FROM_EMAIL
     to_email = [subscriber.email]
+    # Offer a path back if user changes mind later
+    explore_url = f"{getattr(settings,'SITEURL', settings.BASE_URL)}advisory"
 
     try:
         html_content = render_to_string(
@@ -118,6 +144,7 @@ def send_unsubscribe_confirmation_email(subscriber):
             {
                 'subscriber_first_name': subscriber.first_name,
                 'subscriber_email': subscriber.email,
+                'explore_url': explore_url,
             }
         )
     except TemplateDoesNotExist as e:

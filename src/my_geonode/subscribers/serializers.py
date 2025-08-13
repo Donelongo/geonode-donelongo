@@ -16,15 +16,12 @@ class SubscriberSerializer(serializers.ModelSerializer):
 
     # Custom validation to handle unique email check for existing active users
     def validate_email(self, value):
-        instance = self.instance # Get the instance if this is an update
-
-        if instance and instance.email == value: # If email hasn't changed on update
-            return value
-
-        # For new instances or if email changed on update, check for existing active subscribers
-        if Subscriber.objects.filter(email=value, is_active=True).exists():
-            raise serializers.ValidationError("Subscriber with this email is already active.")
-
+        """
+        Allow passing an email that might already exist so the ViewSet logic can
+        decide whether to reactivate (200) or return a 409 conflict. We only
+        enforce format-level validation here; uniqueness is handled at the
+        application layer.
+        """
         return value
 
     # The update method is implicitly handled by ModelSerializer,

@@ -3,10 +3,8 @@ import secrets
 from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
 from .models import Subscriber
-from info_hub.models import AdvisoryMessage
-from info_hub.tasks import send_new_advisory_email_task
-from subscribers.tasks import send_welcome_email_task
-from .tasks import send_welcome_email_task
+from info_hub.models import AdvisoryMessage  # noqa: F401 (may be used later)
+from .utils import send_confirmation_email
 
 
 @receiver(pre_save, sender=Subscriber)
@@ -16,18 +14,18 @@ def generate_subscriber_token(sender, instance, **kwargs):
 
 
 @receiver(post_save, sender=Subscriber)
-def send_latest_advisory_to_new_subscriber(sender, instance, created, **kwargs):
+def send_confirmation_on_create(sender, instance, created, **kwargs):
+    """Always send confirmation email on first creation.
+
+    Temporarily restored to guarantee email delivery while view logic
+    is being iterated. Avoids dependency on custom flags. If duplicate
+    mails ever appear, we can re-introduce gating once the view code is
+    confirmed deployed in the container.
+    """
     if created:
-        print(f"📥 New subscriber registered: {instance.email}")
-
-        # Send latest advisory
-        advisory = AdvisoryMessage.objects.last()
-        if advisory:
-            print(f"📤 Sending latest advisory ({advisory.id}) to new subscriber...")
-            send_new_advisory_email_task.delay(advisory.id)
-        else:
-            print("⚠️ No advisory found to send.")
-
-        # Send welcome email
-        print(f"📨 Sending welcome email to {instance.email}")
-        send_welcome_email_task.delay(instance.id)
+        print(f"[SIGNAL_CONFIRM] New subscriber {instance.email} -> sending confirmation email (signal)")
+        try:
+            ok = send_confirmation_email(instance)
+            print(f"[SIGNAL_CONFIRM] Result for {instance.email}: {ok}")
+        except Exception as e:
+            print(f"[SIGNAL_CONFIRM] ERROR sending confirmation for {instance.email}: {e}")
