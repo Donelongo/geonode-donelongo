@@ -191,6 +191,29 @@ services:
       - rabbitmq:/var/lib/rabbitmq
     restart: unless-stopped
 
+  # React Frontend (development hot-reload)
+  frontend:
+    build:
+      context: ./agro-climate-advisory-system-frontend
+      dockerfile: Dockerfile
+    container_name: frontend4${COMPOSE_PROJECT_NAME}
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - WDS_SOCKET_PORT=3000
+      - REACT_APP_GEOSERVER_WMS_URL=http://localhost:8080/geoserver/wms
+      - REACT_APP_WMS_LAYERS_ENDPOINT=/api/geonode/wms-layers
+    volumes:
+      - ./agro-climate-advisory-system-frontend:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    depends_on:
+      geoserver:
+        condition: service_started
+      django:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   statics:
     name: ${COMPOSE_PROJECT_NAME}-statics

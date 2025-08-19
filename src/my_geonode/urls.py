@@ -19,6 +19,7 @@
 #########################################################################
 
 from django.urls import include, path  # Ensure 'include' and 'path' are imported
+from .meta_views import meta_json
 from django.views.generic import TemplateView, RedirectView
 from geonode.urls import urlpatterns as geonode_core_urlpatterns
 from django.conf import settings
@@ -54,6 +55,7 @@ urlpatterns += [
     path('about', TemplateView.as_view(template_name='frontend/app.html'), name='about'),
     path('contact', TemplateView.as_view(template_name='frontend/app.html'), name='contact'),
     path('terms-and-conditions', TemplateView.as_view(template_name='frontend/app.html'), name='terms_and_conditions'),
+    path('meta.json', meta_json, name='meta_json'),
 
 ]
 

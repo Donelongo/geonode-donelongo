@@ -106,7 +106,45 @@ def download_advisory_pdf(request, advisory_id):
     Story.append(Paragraph(f"{advisory.title}", styles['AdvisoryTitle']))
     Story.append(Spacer(1, 0.1 * inch))
 
-    # --- Key Details ---
+    # --- Featured Image directly after title (no label) ---
+    if advisory.featured_image_file:
+        loaded = False
+        errors = []
+        try:
+            if hasattr(advisory.featured_image_file, 'path') and os.path.exists(advisory.featured_image_file.path):
+                with open(advisory.featured_image_file.path, 'rb') as f:
+                    image_data = BytesIO(f.read())
+                img = Image(image_data)
+                loaded = True
+        except Exception as e:
+            errors.append(f"fs:{e}")
+        if not loaded:
+            try:
+                image_url = request.build_absolute_uri(advisory.featured_image_file.url)
+                response = requests.get(image_url, timeout=10)
+                response.raise_for_status()
+                image_data = BytesIO(response.content)
+                img = Image(image_data)
+                loaded = True
+            except Exception as e:
+                errors.append(f"http:{e}")
+        if loaded:
+            img_width = 4 * inch
+            img_height = img.drawHeight * (img_width / img.drawWidth)
+            max_width = letter[0] - 2 * inch
+            if img_width > max_width:
+                img_width = max_width
+                img_height = img.drawHeight * (img_width / img.drawWidth)
+            img.drawWidth = img_width
+            img.drawHeight = img_height
+            Story.append(img)
+            Story.append(Spacer(1, 0.2 * inch))
+        else:
+            err_msg = '; '.join(errors) if errors else 'unknown'
+            Story.append(Paragraph(f"<i>Could not load featured image: {err_msg}</i>", styles['BodyText']))
+            Story.append(Spacer(1, 0.1 * inch))
+
+    # --- Key Details (after image) ---
     Story.append(Paragraph(f"<b>Date Posted:</b> {advisory.published_date.strftime('%Y-%m-%d')}", styles['KeyValue']))
     Story.append(Paragraph(f"<b>Category:</b> {advisory.get_category_display()}", styles['KeyValue']))
     Story.append(Spacer(1, 0.2 * inch))
@@ -143,39 +181,7 @@ def download_advisory_pdf(request, advisory_id):
         Story.append(Paragraph(advisory.potential_risks, styles['BodyText']))
         Story.append(Spacer(1, 0.2 * inch))
 
-    # --- Featured Image ---
-    # info_hub/views.py
-
-# --- Featured Image ---
-    if advisory.featured_image_file:
-        try:
-            image_url = request.build_absolute_uri(advisory.featured_image_file.url)
-            response = requests.get(image_url, timeout=10)
-            response.raise_for_status()
-
-            image_data = BytesIO(response.content)
-            img = Image(image_data)
-
-            # --- ADD THIS LOGIC BACK IN ---
-            img_width = 4 * inch
-            img_height = img.drawHeight * (img_width / img.drawWidth)
-
-            if img_width > (letter[0] - 2 * inch):
-                img_width = letter[0] - 2 * inch
-                img_height = img.drawHeight * (img_width / img.drawWidth)
-
-            img.drawWidth = img_width
-            img.drawHeight = img_height
-
-            Story.append(Paragraph("Featured Image:", styles['SectionTitle']))
-            Story.append(Spacer(1, 0.1 * inch))
-            Story.append(img)
-            Story.append(Spacer(1, 0.2 * inch))
-            # --- END OF ADDED LOGIC ---
-
-        except Exception as e:
-            Story.append(Paragraph(f"<i>Could not load featured image: {e}</i>", styles['BodyText']))
-            print(f"Error loading image for PDF: {e}")
+    # (Featured image already handled above; block ved.)
 
 
     # --- Build the PDF ---
