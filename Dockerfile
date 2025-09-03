@@ -2,12 +2,11 @@
 # This stage uses a Node.js image to build your frontend.
 # It's a temporary stage that will be discarded later.
 FROM node:18-alpine AS builder
-
-# Set the working directory for the frontend build
 WORKDIR /usr/src/app/frontend
 COPY ./agro-climate-advisory-system-frontend/package*.json ./
 RUN npm install --legacy-peer-deps
 COPY ./agro-climate-advisory-system-frontend/ ./
+ENV PUBLIC_URL=/static/frontend
 RUN npm run build
 
 

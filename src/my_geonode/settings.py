@@ -88,9 +88,15 @@ INSTALLED_APPS += (
 ROOT_URLCONF = os.getenv("ROOT_URLCONF", f"{PROJECT_NAME}.urls")
 
 # Additional directories which hold static files
-# - Give priority to local geonode-project ones
+# - Ensure project static dir (/usr/src/my_geonode/static) is included so CRA build is found
+# Project package root (e.g., /usr/src/my_geonode)
+# LOCAL_ROOT points to /usr/src/my_geonode/src/my_geonode — go up two levels to reach /usr/src/my_geonode
+_PROJECT_PACKAGE_ROOT = os.path.abspath(os.path.join(LOCAL_ROOT, os.pardir, os.pardir))
+_PROJECT_STATIC_DIR = os.path.join(_PROJECT_PACKAGE_ROOT, "static")  # /usr/src/my_geonode/static
+_LOCAL_APP_STATIC_DIR = os.path.join(LOCAL_ROOT, "static")  # /usr/src/my_geonode/my_geonode/static
 STATICFILES_DIRS = [
-    os.path.join(LOCAL_ROOT, "static"),
+    _PROJECT_STATIC_DIR,
+    _LOCAL_APP_STATIC_DIR,
 ] + STATICFILES_DIRS
 
 # Location of locale files

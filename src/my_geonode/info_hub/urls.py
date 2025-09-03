@@ -2,6 +2,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
+from . import api
 
 
 app_name = 'info_hub' # <--- CRITICAL: Make sure this line is present and correct
@@ -14,5 +15,7 @@ urlpatterns = [
     path('', include(router.urls)),
     # This line is the key for the PDF download:
     path('advisory/<int:advisory_id>/pdf/', views.download_advisory_pdf, name='advisory_pdf'),
+    # API endpoint for WMS layer list
+    path('api/wms-layers', api.wms_layers_api_view, name='wms-layers-api'),
 
 ]

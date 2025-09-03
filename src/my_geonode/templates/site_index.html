@@ -1,0 +1,70 @@
+{% extends "site_base.html" %}
+
+{% block content %}
+<!-- Copilot: Create a clean, professional landing page for the GeoNode project.
+Include:
+- A navigation bar (Home, Maps, Documentation, Contact)
+- A hero section with project name and description
+- A section with 3 feature cards (Map Viewer, Data Upload, Analysis Tools)
+- A footer with contact info
+Use Tailwind CSS classes for styling.
+-->
+
+<div class="min-h-screen flex flex-col bg-gray-50">
+  <!-- Nav -->
+  <header class="bg-white border-b">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <a href="/" class="text-xl font-semibold text-gray-800">GeoNode</a>
+      <nav class="space-x-6 text-sm">
+        <a class="text-gray-600 hover:text-gray-900" href="/">Home</a>
+        <a class="text-gray-600 hover:text-gray-900" href="/maps/">Maps</a>
+        <a class="text-gray-600 hover:text-gray-900" href="https://docs.geonode.org/" target="_blank" rel="noopener">Documentation</a>
+        <a class="text-gray-600 hover:text-gray-900" href="/contact">Contact</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="flex-1">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
+      <h1 class="text-4xl sm:text-5xl font-extrabold text-gray-900">Your GeoNode Platform</h1>
+      <p class="mt-4 text-lg text-gray-600 max-w-2xl mx-auto">
+        Discover, manage, and share geospatial data. Build maps, analyze layers, and collaborate with your team.
+      </p>
+      <div class="mt-8 space-x-4">
+        <a href="/maps/" class="inline-block bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-md">Explore Maps</a>
+        <a href="/app/" class="inline-block bg-gray-900 hover:bg-black text-white px-6 py-3 rounded-md">Open Web App</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="bg-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="rounded-lg border p-6 bg-white">
+          <h3 class="text-lg font-semibold text-gray-900">Map Viewer</h3>
+          <p class="mt-2 text-gray-600">Visualize, style, and share maps with a modern, user-friendly interface.</p>
+        </div>
+        <div class="rounded-lg border p-6 bg-white">
+          <h3 class="text-lg font-semibold text-gray-900">Data Upload</h3>
+          <p class="mt-2 text-gray-600">Upload and manage vector and raster datasets with rich metadata support.</p>
+        </div>
+        <div class="rounded-lg border p-6 bg-white">
+          <h3 class="text-lg font-semibold text-gray-900">Analysis Tools</h3>
+          <p class="mt-2 text-gray-600">Leverage GeoServer and plugins to analyze and process geospatial data.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="bg-gray-100 border-t">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-sm text-gray-600 flex items-center justify-between">
+      <p>&copy; {{ now|date:"Y" }} GeoNode. All rights reserved.</p>
+      <p>Contact: <a class="text-blue-600 hover:underline" href="mailto:info@example.com">info@example.com</a></p>
+    </div>
+  </footer>
+</div>
+
+{% endblock %}
