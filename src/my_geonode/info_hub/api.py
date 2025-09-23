@@ -38,17 +38,48 @@ def wms_layers_api_view(request):
     for ds in qs:
         # Prefer fully qualified typename; fall back to alternate or name
         layer_name = getattr(ds, "typename", None) or getattr(ds, "alternate", None) or getattr(ds, "name", None)
+
+        # Prefer the model helper method which returns tag names (authoritative)
+        keywords = None
+        try:
+            if hasattr(ds, 'keyword_list'):
+                _kw = ds.keyword_list()
+                if _kw:
+                    keywords = [str(k) for k in _kw]
+        except Exception:
+            keywords = None
+
+        # Fallback to inspect common attributes if the helper returned nothing
+        if not keywords:
+            for field in ('keywords', 'subjects', 'tags'):
+                if hasattr(ds, field):
+                    val = getattr(ds, field)
+                    try:
+                        if hasattr(val, 'all'):
+                            keywords = [str(k) for k in val.all()]
+                        else:
+                            if isinstance(val, str):
+                                keywords = [s.strip() for s in val.split(',') if s.strip()]
+                            else:
+                                keywords = list(val)
+                    except Exception:
+                        keywords = None
+                    break
+
+        # Ensure bbox ordering (minx, miny, maxx, maxy)
+        bbox = [None, None, None, None]
+        try:
+            bbox = [ds.bbox_x0, ds.bbox_y0, ds.bbox_x1, ds.bbox_y1]
+        except Exception:
+            bbox = [None, None, None, None]
+
         items.append({
             "id": ds.id,
             "title": ds.title,
             "wms_url": wms_url,
             "layer_name": layer_name,
-            "bbox": [
-                ds.bbox_x0,
-                ds.bbox_y0,
-                ds.bbox_x1,
-                ds.bbox_y1,
-            ],
+            "bbox": bbox,
+            "keywords": keywords or [],
         })
 
     return JsonResponse(items, safe=False)
