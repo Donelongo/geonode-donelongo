@@ -43,10 +43,11 @@ ENV PYTHONPATH=/usr/src:${PYTHONPATH}
 COPY src/my_geonode /usr/src/my_geonode/
 
 # <<-- THE MAGIC STEP -->>
-# Create the target directory for the frontend build
-RUN mkdir -p /usr/src/my_geonode/static/frontend
+# Create the target directory for the frontend build and locales
+RUN mkdir -p /usr/src/my_geonode/static/frontend /usr/src/my_geonode/static/locales
 # Copy the built React app FROM THE 'builder' STAGE into your GeoNode static files
 COPY --from=builder /usr/src/app/frontend/build /usr/src/my_geonode/static/frontend/
+COPY --from=builder /usr/src/app/frontend/build/locales /usr/src/my_geonode/static/locales/
 
 # Expose media assets also at /static/media (some CRA bundles resolve to /static/media/*)
 RUN if [ -d /usr/src/my_geonode/static/frontend/static/media ]; then \

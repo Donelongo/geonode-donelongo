@@ -47,12 +47,26 @@ Order matters: place SPA entrypoints before GeoNode's core URLs so hard refreshe
 on React pages resolve to the SPA instead of GeoNode templates.
 """
 
-# SPA entrypoints (served by built React index)
+# SPA patterns
 spa_urlpatterns = [
     # /app base + deep links
     path('app/', react_app, name='react_app'),
     re_path(r'^app/.*$', react_app, name='react_app_catchall'),
-    # Top-level SPA pages and common aliases
+]
+
+# API and Core endpoints
+api_urlpatterns = [
+    # Mount info_hub at /info_hub for API endpoints like /info_hub/api/wms-layers
+    path('info_hub/', include('info_hub.urls')),
+    path('api/info_hub/', include('info_hub.urls')),
+    path('api/subscribers/', include('subscribers.urls')),
+    path("schema/", SpectacularAPIView.as_view(), name="schema"),
+    path('api/contact/', include('contact.urls')),
+    path('geoserver_proxy/ows', geoserver_ows),
+]
+
+# Specific SPA Toplevel routes (lower priority than APIs)
+spa_toplevel_urlpatterns = [
     re_path(r'^advisory(?:/.*)?$', react_app, name='advisory'),
     re_path(r'^disease(?:/.*)?$', react_app, name='disease'),
     re_path(r'^suitability-map(?:/.*)?$', react_app, name='suitability_map'),
@@ -65,7 +79,7 @@ spa_urlpatterns = [
     re_path(r'^terms-and-conditions(?:/.*)?$', react_app, name='terms_and_conditions'),
 ]
 
-urlpatterns = spa_urlpatterns + geonode_core_urlpatterns
+urlpatterns = api_urlpatterns + spa_urlpatterns + spa_toplevel_urlpatterns + geonode_core_urlpatterns
 
 # You can register your own urlpatterns here
 # Example of adding a custom homepage (uncomment and modify if needed):

@@ -207,6 +207,7 @@ services:
       - /app/node_modules
     ports:
       - "3000:3000"
+    command: npm start
     depends_on:
       geoserver:
         condition: service_started
