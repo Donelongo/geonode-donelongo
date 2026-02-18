@@ -47,3 +47,13 @@ def wms_layers_capabilities(request):
     params.setdefault('SERVICE', 'WMS')
     params.setdefault('REQUEST', 'GetCapabilities')
     return geoserver_ows(request.__class__({'REQUEST_METHOD': 'GET', 'wsgi.input': None}))  # placeholder to satisfy type check
+
+
+def custom_server_error(request, template_name='500.html'):
+    """
+    Custom handler500 that renders the 500 template with the request context.
+    This ensures template tags that expect `request` in the context (e.g. socialaccount
+    template tags) do not KeyError when Django renders error pages.
+    """
+    from django.shortcuts import render
+    return render(request, template_name, status=500)

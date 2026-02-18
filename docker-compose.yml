@@ -201,7 +201,7 @@ services:
       - CHOKIDAR_USEPOLLING=true
       - WDS_SOCKET_PORT=3000
       - REACT_APP_GEOSERVER_WMS_URL=http://localhost:8080/geoserver/wms
-      - REACT_APP_WMS_LAYERS_ENDPOINT=/api/geonode/wms-layers
+      - REACT_APP_WMS_LAYERS_ENDPOINT=/api/info_hub/api/wms-layers
     volumes:
       - ./agro-climate-advisory-system-frontend:/app
       - /app/node_modules

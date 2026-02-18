@@ -17,7 +17,11 @@ urlpatterns = [
     path('advisory/<int:advisory_id>/pdf/', views.download_advisory_pdf, name='advisory_pdf'),
     # API endpoint for WMS layer list
     path('api/wms-layers', api.wms_layers_api_view, name='wms-layers-api'),
+    # Compatibility alias (when mounted under /api/info_hub/)
+    path('wms-layers', api.wms_layers_api_view, name='wms-layers-api-compat'),
     # API endpoint to get distinct attribute values for a layer (server-side WFS proxy)
     path('api/layer-attributes', api.layer_attributes_api_view, name='layer-attributes-api'),
+    # Compatibility alias (when mounted under /api/info_hub/)
+    path('layer-attributes', api.layer_attributes_api_view, name='layer-attributes-api-compat'),
 
 ]

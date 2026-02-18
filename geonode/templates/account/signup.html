@@ -11,13 +11,15 @@
         <h2>{% trans "Sign up" %}</h2>
     </div>
     <div class="row">
-      {% get_providers as socialaccount_providers %}
-      {% if socialaccount_providers %}
-          <p>{% blocktrans with site.name as site_name %}Sign up with one
-              of your existing third party accounts{% endblocktrans %}</p>
-          {% include "socialaccount/snippets/provider_list.html" with process="signup" %}
-          {% include "socialaccount/snippets/login_extra.html" %}
-          <hr>
+      {% if request %}
+          {% get_providers as socialaccount_providers %}
+          {% if socialaccount_providers %}
+              <p>{% blocktrans with site.name as site_name %}Sign up with one
+                  of your existing third party accounts{% endblocktrans %}</p>
+              {% include "socialaccount/snippets/provider_list.html" with process="signup" %}
+              {% include "socialaccount/snippets/login_extra.html" %}
+              <hr>
+          {% endif %}
       {% endif %}
     </div>
     {% if account_geonode_local_signup %}

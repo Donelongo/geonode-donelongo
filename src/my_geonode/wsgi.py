@@ -37,6 +37,67 @@ import os
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "my_geonode.settings")
 
+# Ensure Django's LANG_INFO contains smaller language codes we need
+try:
+	from django.conf import locale as _dj_locale
+
+	_dj_lang_info = getattr(_dj_locale, "LANG_INFO", None)
+	if _dj_lang_info is not None:
+		_dj_lang_info.update(
+			{
+				"am": {
+					"bidi": False,
+					"code": "am",
+					"name": "Amharic",
+					"name_local": "\u12a0\u121b\u122d\u129b\u1295",
+				},
+				"ti": {
+					"bidi": False,
+					"code": "ti",
+					"name": "Tigrinya",
+					"name_local": "\u1275\u1303\u1309\u122a\u1229\u1295",
+				},
+				"om": {
+					"bidi": False,
+					"code": "om",
+					"name": "Oromo",
+					"name_local": "Afaan Oromo",
+				},
+			}
+		)
+except Exception:
+	pass
+# Defensive monkey-patch for modeltranslation language bidi lookup.
+# Some Django distributions may not include entries for smaller language
+# codes (e.g. 'am'). Patch `modeltranslation.utils.get_language_bidi` here
+# at WSGI startup so it is in effect before Django/ModelTranslation build
+# ModelAdmin forms which call it.
+try:
+	import modeltranslation.utils as _mt_utils
+
+	_mt_orig = getattr(_mt_utils, "get_language_bidi", None)
+
+	if _mt_orig:
+		def _mt_safe_get_language_bidi(lang: str) -> bool:
+			try:
+				return _mt_orig(lang)
+			except KeyError:
+				return False
+
+		_mt_utils.get_language_bidi = _mt_safe_get_language_bidi
+		# Also patch modeltranslation.admin where the function may have been
+		# imported directly (``from modeltranslation.utils import get_language_bidi``)
+		try:
+			import modeltranslation.admin as _mt_admin
+
+			if hasattr(_mt_admin, "get_language_bidi"):
+				_mt_admin.get_language_bidi = _mt_safe_get_language_bidi
+		except Exception:
+			pass
+except Exception:
+	# If modeltranslation isn't installed yet or import fails, continue.
+	pass
+
 # This application object is used by any WSGI server configured to use this
 # file. This includes Django's development server, if the WSGI_APPLICATION
 # setting points here.

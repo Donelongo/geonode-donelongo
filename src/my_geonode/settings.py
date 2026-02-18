@@ -54,6 +54,34 @@ try:
 except ImportError:
     pass  # It's okay if local_settings.py doesn't exist, use defaults
 
+# Ensure Django knows about additional language codes we use for translations.
+# Some Django distributions may not include smaller language codes (eg. 'am',
+# 'ti', 'om') in LANG_INFO. Add safe entries and ensure they appear in
+# `LANGUAGES` so modeltranslation/admin won't raise KeyError.
+try:
+    from django.conf.locale import LANG_INFO as _DJANGO_LANG_INFO
+    _DJANGO_LANG_INFO.update(
+        {
+            "am": {"bidi": False, "code": "am", "name": "Amharic", "name_local": "\u12a0\u121b\u122d\u129b\u1295"},
+            "ti": {"bidi": False, "code": "ti", "name": "Tigrinya", "name_local": "\u1275\u1303\u1309\u122a\u1229\u1295"},
+            "om": {"bidi": False, "code": "om", "name": "Oromo", "name_local": "Afaan Oromo"},
+        }
+    )
+except Exception:
+    # If LANG_INFO is unavailable for some reason, continue without failing.
+    pass
+
+# Ensure these languages are present in the `LANGUAGES` setting so admin
+# and modeltranslation present them in forms.
+_extra_langs = [("am", "Amharic"), ("ti", "Tigrinya"), ("om", "Oromo")]
+try:
+    LANGUAGES = list(LANGUAGES)
+except Exception:
+    LANGUAGES = []
+for _code, _name in _extra_langs:
+    if not any(_code == c for c, _ in LANGUAGES):
+        LANGUAGES.append((_code, _name))
+
 #
 # General Django development settings
 #
@@ -238,3 +266,42 @@ BASE_URL = os.getenv("NGINX_BASE_URL", "http://localhost:3500")
 # This avoids hardcoding paths and respects the Docker volumes
 MEDIA_URL = os.getenv("MEDIA_URL", "/media/")
 MEDIA_ROOT = os.getenv("MEDIA_ROOT", os.path.join(BASE_DIR, 'media'))
+
+LANGUAGES = [
+    ("en", "English"),
+    ("am", "Amharic"),
+    ("ti", "Tigrinya"),
+    ("om", "Oromo"),
+]
+
+MODELTRANSLATION_LANGUAGES = ("en", "am", "ti", "om")
+MODELTRANSLATION_DEFAULT_LANGUAGE = "en"
+# Restrict modeltranslation loading to project app translations only.
+# This prevents GeoNode core models (e.g. layers_dataset) from requiring
+# *_am/*_ti/*_om DB columns that are not present in this deployment.
+MODELTRANSLATION_TRANSLATION_FILES = ("info_hub.translation",)
+
+# Defensive monkey-patch: some deployments/Django builds may not include
+# complete entries for smaller language codes in Django's LANG_INFO map.
+# modeltranslation calls `get_language_bidi()` which currently bubbles a
+# KeyError for unknown codes (eg. 'am'). Patch `modeltranslation.utils`
+# early so admin form construction won't raise when an unexpected code is
+# encountered. This is safe and reversible; it treats unknown languages as
+# non-bidi by default.
+try:
+    import modeltranslation.utils as _mt_utils
+
+    _mt_original_get_language_bidi = getattr(_mt_utils, "get_language_bidi", None)
+
+    if _mt_original_get_language_bidi:
+        def _mt_safe_get_language_bidi(lang: str) -> bool:
+            try:
+                return _mt_original_get_language_bidi(lang)
+            except KeyError:
+                return False
+
+        _mt_utils.get_language_bidi = _mt_safe_get_language_bidi
+except Exception:
+    # Do not fail settings import if modeltranslation isn't available yet
+    pass
+

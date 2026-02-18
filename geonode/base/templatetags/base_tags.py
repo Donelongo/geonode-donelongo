@@ -64,18 +64,31 @@ def get_item(dictionary, key):
 
 @register.simple_tag(takes_context=True)
 def facets(context):
-    request = context["request"]
-    title_filter = request.GET.get("title__icontains", "")
-    abstract_filter = request.GET.get("abstract__icontains", "")
-    purpose_filter = request.GET.get("purpose__icontains", "")
-    extent_filter = request.GET.get("extent", None)
-    keywords_filter = request.GET.getlist("keywords__slug__in", None)
-    category_filter = request.GET.getlist("category__identifier__in", None)
-    regions_filter = request.GET.getlist("regions__name__in", None)
-    owner_filter = request.GET.getlist("owner__username__in", None)
-    date_gte_filter = request.GET.get("date__gte", None)
-    date_lte_filter = request.GET.get("date__lte", None)
-    date_range_filter = request.GET.get("date__range", None)
+    request = context.get("request")
+    if request:
+        title_filter = request.GET.get("title__icontains", "")
+        abstract_filter = request.GET.get("abstract__icontains", "")
+        purpose_filter = request.GET.get("purpose__icontains", "")
+        extent_filter = request.GET.get("extent", None)
+        keywords_filter = request.GET.getlist("keywords__slug__in", None)
+        category_filter = request.GET.getlist("category__identifier__in", None)
+        regions_filter = request.GET.getlist("regions__name__in", None)
+        owner_filter = request.GET.getlist("owner__username__in", None)
+        date_gte_filter = request.GET.get("date__gte", None)
+        date_lte_filter = request.GET.get("date__lte", None)
+        date_range_filter = request.GET.get("date__range", None)
+    else:
+        title_filter = ""
+        abstract_filter = ""
+        purpose_filter = ""
+        extent_filter = None
+        keywords_filter = None
+        category_filter = None
+        regions_filter = None
+        owner_filter = None
+        date_gte_filter = None
+        date_lte_filter = None
+        date_range_filter = None
 
     facet_type = context.get("facet_type", "all")
 

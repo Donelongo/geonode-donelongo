@@ -5,10 +5,135 @@ from django.conf import settings
 from geonode.layers.models import Dataset
 from urllib.parse import urljoin
 import json
+import logging
+import xml.etree.ElementTree as ET
 try:
     import requests
 except Exception:
     requests = None
+
+logger = logging.getLogger(__name__)
+
+
+def _guess_keywords(layer_name, layer_title):
+    text = f"{layer_name or ''} {layer_title or ''}".lower()
+    out = []
+    if "risk" in text:
+        out.append("risk")
+    if "suitability" in text:
+        out.append("suitability")
+    return out
+
+
+def _tag_endswith(elem, suffix):
+    try:
+        return elem.tag.endswith(suffix)
+    except Exception:
+        return False
+
+
+def _find_child_text(layer_elem, suffix):
+    for child in list(layer_elem):
+        if _tag_endswith(child, suffix):
+            return (child.text or "").strip()
+    return ""
+
+
+def _extract_bbox_from_layer(layer_elem):
+    # WMS 1.3.0: EX_GeographicBoundingBox
+    for child in list(layer_elem):
+        if _tag_endswith(child, "EX_GeographicBoundingBox"):
+            vals = {}
+            for n in list(child):
+                k = n.tag.split("}")[-1]
+                vals[k] = (n.text or "").strip()
+            try:
+                return [
+                    float(vals.get("westBoundLongitude")),
+                    float(vals.get("southBoundLatitude")),
+                    float(vals.get("eastBoundLongitude")),
+                    float(vals.get("northBoundLatitude")),
+                ]
+            except Exception:
+                pass
+
+    # WMS 1.1.1 fallback: LatLonBoundingBox attributes
+    for child in list(layer_elem):
+        if _tag_endswith(child, "LatLonBoundingBox"):
+            try:
+                return [
+                    float(child.attrib.get("minx")),
+                    float(child.attrib.get("miny")),
+                    float(child.attrib.get("maxx")),
+                    float(child.attrib.get("maxy")),
+                ]
+            except Exception:
+                pass
+
+    return [None, None, None, None]
+
+
+def _fallback_layers_from_capabilities():
+    """Fallback source for layers when GeoNode Dataset ORM is not usable."""
+    siteurl = getattr(settings, "SITEURL", "/")
+    public_wms_url = urljoin(siteurl, "geoserver/wms")
+
+    # Prefer internal GeoServer URL for server-side fetch
+    try:
+        base = settings.OGC_SERVER["default"].get("LOCATION") or "http://geoserver:8080/geoserver/"
+    except Exception:
+        base = "http://geoserver:8080/geoserver/"
+    if not base.endswith("/"):
+        base += "/"
+    internal_wms_url = urljoin(base, "wms")
+
+    caps_params = {"service": "WMS", "request": "GetCapabilities"}
+    xml_text = None
+    try:
+        if requests:
+            resp = requests.get(internal_wms_url, params=caps_params, timeout=20)
+            resp.raise_for_status()
+            xml_text = resp.text
+        else:
+            from urllib.request import urlopen
+            from urllib.parse import urlencode
+            with urlopen(f"{internal_wms_url}?{urlencode(caps_params)}", timeout=20) as f:
+                xml_text = f.read().decode("utf-8", errors="ignore")
+    except Exception as e:
+        logger.warning("WMS capabilities fallback failed: %s", e)
+        return []
+
+    if not xml_text:
+        return []
+
+    try:
+        root = ET.fromstring(xml_text)
+    except Exception as e:
+        logger.warning("Invalid WMS capabilities XML: %s", e)
+        return []
+
+    items = []
+    idx = 1
+    for layer in root.iter():
+        if not _tag_endswith(layer, "Layer"):
+            continue
+        name = _find_child_text(layer, "Name")
+        if not name:
+            continue
+        title = _find_child_text(layer, "Title") or name
+        items.append(
+            {
+                "id": idx,
+                "title": title,
+                "wms_url": public_wms_url,
+                "layer_name": name,
+                "bbox": _extract_bbox_from_layer(layer),
+                "keywords": _guess_keywords(name, title),
+            }
+        )
+        idx += 1
+
+    return items
 
 
 @require_GET
@@ -22,70 +147,44 @@ def wms_layers_api_view(request):
       - layer_name: GeoServer published layer name (typename)
       - bbox: [minx, miny, maxx, maxy]
     """
-    # Filter published datasets; avoid non-public
-    qs = Dataset.objects.filter(is_published=True)
-
-    # Derive WMS base URL from settings; prefer GEOSERVER_PUBLIC_LOCATION
-    wms_base = getattr(settings, 'GEOSERVER_PUBLIC_LOCATION', None)
-    try:
-        if not wms_base:
-            wms_base = settings.OGC_SERVER['default'].get('PUBLIC_LOCATION') or settings.OGC_SERVER['default'].get('LOCATION')
-    except Exception:
-        pass
-    if not wms_base:
-        # Last-resort sensible default under SITEURL
-        wms_base = urljoin(getattr(settings, 'SITEURL', '/'), 'geoserver/')
-    # Ensure trailing slash then join 'wms'
-    if not wms_base.endswith('/'):
-        wms_base += '/'
-    wms_url = urljoin(getattr(settings, 'SITEURL', '/'), 'geoserver/wms')
     items = []
-    for ds in qs:
-        # Prefer fully qualified typename; fall back to alternate or name
-        layer_name = getattr(ds, "typename", None) or getattr(ds, "alternate", None) or getattr(ds, "name", None)
+    siteurl = getattr(settings, "SITEURL", "/")
+    wms_url = urljoin(siteurl, "geoserver/wms")
 
-        # Prefer the model helper method which returns tag names (authoritative)
-        keywords = None
-        try:
-            if hasattr(ds, 'keyword_list'):
-                _kw = ds.keyword_list()
-                if _kw:
-                    keywords = [str(k) for k in _kw]
-        except Exception:
+    # Primary source: GeoNode datasets (when model/db schema are aligned).
+    try:
+        qs = Dataset.objects.filter(is_published=True)
+        for ds in qs:
+            layer_name = getattr(ds, "typename", None) or getattr(ds, "alternate", None) or getattr(ds, "name", None)
             keywords = None
-
-        # Fallback to inspect common attributes if the helper returned nothing
-        if not keywords:
-            for field in ('keywords', 'subjects', 'tags'):
-                if hasattr(ds, field):
-                    val = getattr(ds, field)
-                    try:
-                        if hasattr(val, 'all'):
-                            keywords = [str(k) for k in val.all()]
-                        else:
-                            if isinstance(val, str):
-                                keywords = [s.strip() for s in val.split(',') if s.strip()]
-                            else:
-                                keywords = list(val)
-                    except Exception:
-                        keywords = None
-                    break
-
-        # Ensure bbox ordering (minx, miny, maxx, maxy)
-        bbox = [None, None, None, None]
-        try:
-            bbox = [ds.bbox_x0, ds.bbox_y0, ds.bbox_x1, ds.bbox_y1]
-        except Exception:
+            try:
+                if hasattr(ds, "keyword_list"):
+                    _kw = ds.keyword_list()
+                    if _kw:
+                        keywords = [str(k) for k in _kw]
+            except Exception:
+                keywords = None
             bbox = [None, None, None, None]
+            try:
+                bbox = [ds.bbox_x0, ds.bbox_y0, ds.bbox_x1, ds.bbox_y1]
+            except Exception:
+                bbox = [None, None, None, None]
+            items.append(
+                {
+                    "id": ds.id,
+                    "title": ds.title,
+                    "wms_url": wms_url,
+                    "layer_name": layer_name,
+                    "bbox": bbox,
+                    "keywords": keywords or _guess_keywords(layer_name, getattr(ds, "title", "")),
+                }
+            )
+    except Exception as e:
+        logger.warning("Dataset ORM path failed for wms-layers; using capabilities fallback: %s", e)
 
-        items.append({
-            "id": ds.id,
-            "title": ds.title,
-            "wms_url": wms_url,
-            "layer_name": layer_name,
-            "bbox": bbox,
-            "keywords": keywords or [],
-        })
+    # Fallback source: GeoServer GetCapabilities.
+    if not items:
+        items = _fallback_layers_from_capabilities()
 
     return JsonResponse(items, safe=False)
 

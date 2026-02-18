@@ -113,3 +113,7 @@ print("✅ Custom URL patterns loaded (GeoNode at root; React pages added; middl
 # No need to add static/media serving here, Nginx handles it in Docker setup.
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+# Use custom server error handler that renders the 500 template with request
+# in the context so template tags expecting `request` do not KeyError.
+handler500 = 'my_geonode.views.custom_server_error'

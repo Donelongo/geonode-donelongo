@@ -2,6 +2,7 @@
 {% load socialaccount %}
 {% load socialaccount_extra %}
 
+{# Guard access to `request` to avoid KeyError when rendering outside a request context #}
 {% if request %}
     {% get_providers as socialaccount_providers %}
 
