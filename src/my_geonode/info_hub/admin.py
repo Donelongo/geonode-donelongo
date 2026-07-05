@@ -1,14 +1,8 @@
-# my_geonde/em/info_hub/admin.py
-
 from django.contrib import admin
-try:
-    from modeltranslation.admin import TranslationAdmin
-except Exception:
-    TranslationAdmin = admin.ModelAdmin
 from .models import AdvisoryMessage, Disease  # Import your models
 
 @admin.register(AdvisoryMessage)
-class AdvisoryMessageAdmin(TranslationAdmin, admin.ModelAdmin):
+class AdvisoryMessageAdmin(admin.ModelAdmin):
     list_display = ('title', 'category', 'published_date', 'last_updated')
     search_fields = ('title', 'advisory_content', 'potential_risks')  # Fixed 'description' to 'advisory_content'
     list_filter = ('category', 'published_date',)
@@ -36,7 +30,7 @@ class AdvisoryMessageAdmin(TranslationAdmin, admin.ModelAdmin):
 
 
 @admin.register(Disease)
-class DiseaseAdmin(TranslationAdmin, admin.ModelAdmin):
+class DiseaseAdmin(admin.ModelAdmin):
     list_display = ('name', 'affected_crops')
     search_fields = ('name', 'symptoms', 'affected_crops')
 

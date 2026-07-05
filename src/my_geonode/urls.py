@@ -30,6 +30,7 @@ from drf_spectacular.views import SpectacularAPIView
 from django.http import HttpResponse, Http404
 from django.contrib.staticfiles import finders
 from my_geonode.views import geoserver_ows
+from geonode.upload.api.views import UploadViewSet
 import os
 
 # CRA entrypoint redirect
@@ -56,6 +57,14 @@ spa_urlpatterns = [
 
 # API and Core endpoints
 api_urlpatterns = [
+    # Compatibility for clients expecting /api/v2/resources/upload.
+    # In GeoNode 4.4, upload APIs are under /api/v2/uploads(/upload),
+    # while /api/v2/resources/<pk> can incorrectly capture "upload" as pk.
+    path(
+        "api/v2/resources/upload",
+        UploadViewSet.as_view({"get": "list", "post": "upload"}),
+        name="resources-upload-compat",
+    ),
     # Mount info_hub at /info_hub for API endpoints like /info_hub/api/wms-layers
     path('info_hub/', include('info_hub.urls')),
     path('api/info_hub/', include('info_hub.urls')),

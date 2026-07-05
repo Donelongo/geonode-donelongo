@@ -54,33 +54,10 @@ try:
 except ImportError:
     pass  # It's okay if local_settings.py doesn't exist, use defaults
 
-# Ensure Django knows about additional language codes we use for translations.
-# Some Django distributions may not include smaller language codes (eg. 'am',
-# 'ti', 'om') in LANG_INFO. Add safe entries and ensure they appear in
-# `LANGUAGES` so modeltranslation/admin won't raise KeyError.
-try:
-    from django.conf.locale import LANG_INFO as _DJANGO_LANG_INFO
-    _DJANGO_LANG_INFO.update(
-        {
-            "am": {"bidi": False, "code": "am", "name": "Amharic", "name_local": "\u12a0\u121b\u122d\u129b\u1295"},
-            "ti": {"bidi": False, "code": "ti", "name": "Tigrinya", "name_local": "\u1275\u1303\u1309\u122a\u1229\u1295"},
-            "om": {"bidi": False, "code": "om", "name": "Oromo", "name_local": "Afaan Oromo"},
-        }
-    )
-except Exception:
-    # If LANG_INFO is unavailable for some reason, continue without failing.
-    pass
-
-# Ensure these languages are present in the `LANGUAGES` setting so admin
-# and modeltranslation present them in forms.
-_extra_langs = [("am", "Amharic"), ("ti", "Tigrinya"), ("om", "Oromo")]
-try:
-    LANGUAGES = list(LANGUAGES)
-except Exception:
-    LANGUAGES = []
-for _code, _name in _extra_langs:
-    if not any(_code == c for c, _ in LANGUAGES):
-        LANGUAGES.append((_code, _name))
+# Default languages
+LANGUAGES = (
+    ('en', 'English'),
+)
 
 #
 # General Django development settings
@@ -94,13 +71,11 @@ if not SITEURL.endswith("/"):
 SITENAME = os.getenv("SITENAME", "my_geonode")
 
 # Defines the directory that contains the settings file as the LOCAL_ROOT
-# It is used for relative settings elsewhere.
 LOCAL_ROOT = os.path.abspath(os.path.dirname(__file__))
 
 WSGI_APPLICATION = f"{PROJECT_NAME}.wsgi.application"
 
-# Language code for this installation. All choices can be found here:
-# http://www.i18nguy.com/unicode/language-identifiers.html
+# Language code for this installation.
 LANGUAGE_CODE = os.getenv("LANGUAGE_CODE", "en")
 
 if PROJECT_NAME not in INSTALLED_APPS:
@@ -116,12 +91,9 @@ INSTALLED_APPS += (
 ROOT_URLCONF = os.getenv("ROOT_URLCONF", f"{PROJECT_NAME}.urls")
 
 # Additional directories which hold static files
-# - Ensure project static dir (/usr/src/my_geonode/static) is included so CRA build is found
-# Project package root (e.g., /usr/src/my_geonode)
-# LOCAL_ROOT points to /usr/src/my_geonode/src/my_geonode — go up two levels to reach /usr/src/my_geonode
 _PROJECT_PACKAGE_ROOT = os.path.abspath(os.path.join(LOCAL_ROOT, os.pardir, os.pardir))
-_PROJECT_STATIC_DIR = os.path.join(_PROJECT_PACKAGE_ROOT, "static")  # /usr/src/my_geonode/static
-_LOCAL_APP_STATIC_DIR = os.path.join(LOCAL_ROOT, "static")  # /usr/src/my_geonode/my_geonode/static
+_PROJECT_STATIC_DIR = os.path.join(_PROJECT_PACKAGE_ROOT, "static")
+_LOCAL_APP_STATIC_DIR = os.path.join(LOCAL_ROOT, "static")
 STATICFILES_DIRS = [
     _PROJECT_STATIC_DIR,
     _LOCAL_APP_STATIC_DIR,
@@ -142,19 +114,24 @@ TEMPLATES[0]["OPTIONS"]["context_processors"] = [
     "django.template.context_processors.debug",
     "django.template.context_processors.i18n",
     "django.template.context_processors.tz",
-    "django.template.context_processors.request",  # Add this line
+    "django.template.context_processors.request",
     "django.template.context_processors.media",
     "django.template.context_processors.static",
     "django.contrib.auth.context_processors.auth",
     "django.contrib.messages.context_processors.messages",
     "geonode.context_processors.resource_urls",
     "geonode.themes.context_processors.custom_theme",
+    # Provides GEOSERVER_PUBLIC_LOCATION / GEOSERVER_BASE_URL to templates.
+    # Required by the MapStore client config (_geonode_config.html); without it
+    # geoServerPublicLocation is empty and the auth rule becomes urlPattern '.*',
+    # which breaks MapStore plugin/resource loading (blank homepage & catalogue).
+    "geonode.geoserver.context_processors.geoserver_urls",
 ]
 
 
 # Add your custom middleware
-MIDDLEWARE = list(MIDDLEWARE)  # Convert the tuple to a list
-MIDDLEWARE.insert(1, 'corsheaders.middleware.CorsMiddleware')  # Insert after SecurityMiddleware
+MIDDLEWARE = list(MIDDLEWARE)
+MIDDLEWARE.insert(1, 'corsheaders.middleware.CorsMiddleware')
 
 LOGGING = {
     "version": 1,
@@ -239,14 +216,10 @@ LDAP_ENABLED = ast.literal_eval(os.getenv("LDAP_ENABLED", "False"))
 if LDAP_ENABLED and "geonode_ldap" not in INSTALLED_APPS:
     INSTALLED_APPS += ("geonode_ldap",)
 
-# Add your specific LDAP configuration after this comment:
-# https://docs.geonode.org/en/master/advanced/contrib/#configuration
-
 # --- Your Custom App Settings ---
-# CORS Settings for your React Frontend
 CORS_ALLOW_ALL_ORIGINS = True
 
-# Email configuration for sending advisories (pulled from environment variables)
+# Email configuration
 EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
 EMAIL_HOST = os.getenv("EMAIL_HOST")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", 587))
@@ -258,50 +231,36 @@ DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", EMAIL_HOST_USER)
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", DEFAULT_FROM_EMAIL or EMAIL_HOST_USER)
 
 # --------------------------------
-#! Change
-# Use BASE_URL from the environment, defaulting if not present
 BASE_URL = os.getenv("NGINX_BASE_URL", "http://localhost:3500")
 
-# Use MEDIA_URL and MEDIA_ROOT from the environment, if available
-# This avoids hardcoding paths and respects the Docker volumes
 MEDIA_URL = os.getenv("MEDIA_URL", "/media/")
 MEDIA_ROOT = os.getenv("MEDIA_ROOT", os.path.join(BASE_DIR, 'media'))
+
+# Language settings
+# Django's bundled LANG_INFO doesn't include the Ethiopian language codes we use
+# (am/om/ti). modeltranslation's admin calls get_language_bidi(), which raises
+# KeyError for unknown codes, so register safe entries for them first.
+try:
+    from django.conf.locale import LANG_INFO as _DJANGO_LANG_INFO
+    _DJANGO_LANG_INFO.setdefault("am", {"bidi": False, "code": "am", "name": "Amharic", "name_local": "አማርኛ"})
+    _DJANGO_LANG_INFO.setdefault("om", {"bidi": False, "code": "om", "name": "Oromo", "name_local": "Afaan Oromoo"})
+    _DJANGO_LANG_INFO.setdefault("ti", {"bidi": False, "code": "ti", "name": "Tigrinya", "name_local": "ትግርኛ"})
+except Exception:
+    pass
 
 LANGUAGES = [
     ("en", "English"),
     ("am", "Amharic"),
-    ("ti", "Tigrinya"),
     ("om", "Oromo"),
+    ("ti", "Tigrinya"),
 ]
 
-MODELTRANSLATION_LANGUAGES = ("en", "am", "ti", "om")
+# modeltranslation: scoped to the info_hub app ONLY, so it never tries to add
+# *_am/*_om/*_ti columns to GeoNode's core models (that is what broke earlier).
+MODELTRANSLATION_LANGUAGES = ("en", "am", "om", "ti")
 MODELTRANSLATION_DEFAULT_LANGUAGE = "en"
-# Restrict modeltranslation loading to project app translations only.
-# This prevents GeoNode core models (e.g. layers_dataset) from requiring
-# *_am/*_ti/*_om DB columns that are not present in this deployment.
 MODELTRANSLATION_TRANSLATION_FILES = ("info_hub.translation",)
-
-# Defensive monkey-patch: some deployments/Django builds may not include
-# complete entries for smaller language codes in Django's LANG_INFO map.
-# modeltranslation calls `get_language_bidi()` which currently bubbles a
-# KeyError for unknown codes (eg. 'am'). Patch `modeltranslation.utils`
-# early so admin form construction won't raise when an unexpected code is
-# encountered. This is safe and reversible; it treats unknown languages as
-# non-bidi by default.
-try:
-    import modeltranslation.utils as _mt_utils
-
-    _mt_original_get_language_bidi = getattr(_mt_utils, "get_language_bidi", None)
-
-    if _mt_original_get_language_bidi:
-        def _mt_safe_get_language_bidi(lang: str) -> bool:
-            try:
-                return _mt_original_get_language_bidi(lang)
-            except KeyError:
-                return False
-
-        _mt_utils.get_language_bidi = _mt_safe_get_language_bidi
-except Exception:
-    # Do not fail settings import if modeltranslation isn't available yet
-    pass
-
+# NOTE: do NOT import modeltranslation here. Importing modeltranslation.* during
+# settings load computes its AVAILABLE_LANGUAGES before MODELTRANSLATION_LANGUAGES
+# is visible, caching the full ~100-language Django default. The LANG_INFO entries
+# added above are what keep get_language_bidi() from raising on am/om/ti.

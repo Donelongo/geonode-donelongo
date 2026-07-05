@@ -8,7 +8,7 @@ x-common-django:
   env_file:
     - .env
   volumes:
-    # - './src:/usr/src/my_geonode'
+    - ./src/my_geonode:/usr/src/my_geonode
     - statics:/mnt/volumes/statics
     - geoserver-data-dir:/geoserver_data/data
     - backup-restore:/backup_restore
@@ -36,10 +36,11 @@ services:
     environment:
       - IS_CELERY=False
     volumes:
+      - ./src:/usr/src/my_geonode
       - statics:/mnt/volumes/statics
       - ./media:/usr/src/app/media
     entrypoint: ["/usr/src/my_geonode/entrypoint.sh"]
-    command: "uwsgi --ini /usr/src/my_geonode/uwsgi.ini"
+    command: ["uwsgi", "--ini", "/usr/src/my_geonode/uwsgi.ini"]
 
   # Celery worker that executes celery tasks created by Django.
   celery:
@@ -50,6 +51,10 @@ services:
         condition: service_healthy
     environment:
       - IS_CELERY=True
+    volumes:
+      - ./src:/usr/src/my_geonode
+      - statics:/mnt/volumes/statics
+      - ./media:/usr/src/app/media
     entrypoint: ["/usr/src/my_geonode/entrypoint.sh"]
     command: "celery-cmd"
 

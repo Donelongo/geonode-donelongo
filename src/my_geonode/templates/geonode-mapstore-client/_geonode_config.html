@@ -1,9 +1,81 @@
 {% extends 'geonode-mapstore-client/_geonode_config.html' %}
 {% block override_local_config %}
+{{ block.super }}
 <script>
-    window.__GEONODE_CONFIG__.overrideLocalConfig = function(localConfig, _) {
-        // Here the localConfig can be overridden and/or extended
-        return localConfig;
-    };
+    // 🔧 DOM Patch: Ensure #gn-catalogue exists for MapStore to mount.
+    (function () {
+        function patchDOM() {
+            try {
+                const el = document.querySelector('.gn-catalogue');
+                if (el && !el.id) {
+                    el.id = 'gn-catalogue';
+                    console.log('🔧 DOM: Assigned ID "gn-catalogue" to element with class ".gn-catalogue"');
+                }
+                const msApp = document.getElementById('ms-app');
+                if (msApp && !document.getElementById('ms-container')) {
+                    const container = document.createElement('div');
+                    container.id = 'ms-container';
+                    msApp.appendChild(container);
+                    console.log('🔧 DOM: Created missing #ms-container inside #ms-app');
+                }
+            } catch (e) { }
+        }
+        patchDOM();
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', patchDOM);
+        }
+        var _cnt = 0;
+        var _interval = setInterval(function () {
+            patchDOM();
+            if (_cnt++ > 10 || (document.getElementById('gn-catalogue'))) {
+                clearInterval(_interval);
+            }
+        }, 500);
+    })();
+
+    // 🔧 Config Patch: Wrap the original overrideLocalConfig to add our selector fix.
+    (function () {
+        try {
+            const originalOverride = window.__GEONODE_CONFIG__.overrideLocalConfig;
+            window.__GEONODE_CONFIG__.overrideLocalConfig = function (localConfig, context) {
+                if (originalOverride) {
+                    localConfig = originalOverride(localConfig, context);
+                }
+
+                localConfig = localConfig || {};
+                const pluginCategories = (localConfig.plugins) ? Object.keys(localConfig.plugins) : [];
+                pluginCategories.forEach(function (category) {
+                    const plugins = localConfig.plugins[category];
+                    if (Array.isArray(plugins)) {
+                        plugins.forEach(function (plugin) {
+                            if (plugin.cfg) {
+                                ['containerSelector', 'scrollContainerSelector', 'targetSelector'].forEach(function (key) {
+                                    if (plugin.cfg[key] === '#gn-catalogue') {
+                                        // We point to #gn-catalogue because we patched the DOM ID above.
+                                        // This ensures consistency.
+                                        console.log('🔧 Patching ' + plugin.name + '.' + key + ' confirmed for #gn-catalogue');
+                                    }
+                                });
+                            }
+                        });
+                    }
+                });
+
+                // Locale fallback for custom languages
+                const localeMap = { en: "en-US", am: "en-US", ti: "en-US", om: "en-US" };
+                const currentSupported = localConfig.supportedLocales || {};
+                Object.keys(currentSupported).forEach(function (code) {
+                    if (localeMap[code]) {
+                        currentSupported[code].code = localeMap[code];
+                    }
+                });
+
+                return localConfig;
+            };
+            console.log('🔧 Patched overrideLocalConfig wrapper successfully');
+        } catch (e) {
+            console.error('❌ Error patching overrideLocalConfig:', e);
+        }
+    })();
 </script>
 {% endblock %}
