@@ -22,6 +22,14 @@ def _guess_keywords(layer_name, layer_title):
         out.append("risk")
     if "suitability" in text:
         out.append("suitability")
+    # Physical layers (FR03) — topography / slope / elevation rasters
+    if any(k in text for k in ("topograph", "slope", "elevation", "dem", "srtm")):
+        out.append("physical")
+    # Climate features (FR04) and soil characteristics (FR06)
+    if any(k in text for k in ("rainfall", "precipitation", "temperature", "wind", "sunshine", "climate")):
+        out.append("climate")
+    if any(k in text for k in ("soil", "ph_", "organic")):
+        out.append("soil")
     return out
 
 

@@ -1,15 +1,20 @@
 from django.contrib import admin
-from .models import AdvisoryMessage, Disease  # Import your models
+from modeltranslation.admin import TranslationAdmin
+from .models import AdvisoryMessage, Disease, WheatCluster
+
+
+# TranslationAdmin expands each registered field into its per-language
+# variants (en/am/om/ti) in the form, so admins can enter translations.
 
 @admin.register(AdvisoryMessage)
-class AdvisoryMessageAdmin(admin.ModelAdmin):
-    list_display = ('title', 'category', 'published_date', 'last_updated')
-    search_fields = ('title', 'advisory_content', 'potential_risks')  # Fixed 'description' to 'advisory_content'
-    list_filter = ('category', 'published_date',)
+class AdvisoryMessageAdmin(TranslationAdmin):
+    list_display = ('title', 'category', 'cluster', 'published_date', 'last_updated')
+    search_fields = ('title', 'advisory_content', 'potential_risks')
+    list_filter = ('category', 'cluster', 'published_date',)
 
     fieldsets = (
         (None, {  # General information
-            'fields': ('title', 'category', 'featured_image_file', 'published_date')
+            'fields': ('title', 'category', 'cluster', 'featured_image_file', 'advisory_pdf', 'published_date')
         }),
         ('Advisory Details', {  # This maps to "Advisory Content"
             'fields': ('advisory_content',)
@@ -30,7 +35,7 @@ class AdvisoryMessageAdmin(admin.ModelAdmin):
 
 
 @admin.register(Disease)
-class DiseaseAdmin(admin.ModelAdmin):
+class DiseaseAdmin(TranslationAdmin):
     list_display = ('name', 'affected_crops')
     search_fields = ('name', 'symptoms', 'affected_crops')
 
@@ -46,6 +51,27 @@ class DiseaseAdmin(admin.ModelAdmin):
                 'treatment_options',
                 'prevention_methods'
             )
+        }),
+    )
+
+
+@admin.register(WheatCluster)
+class WheatClusterAdmin(TranslationAdmin):
+    list_display = ('name', 'region', 'last_updated')
+    search_fields = ('name', 'region', 'description')
+    filter_horizontal = ('diseases',)
+
+    fieldsets = (
+        (None, {
+            'fields': ('name', 'region')
+        }),
+        ('Details', {
+            'fields': ('description', 'suitability_trend', 'diseases')
+        }),
+        ('Boundary', {
+            'fields': ('geometry',),
+            'description': 'Paste a GeoJSON geometry object (Polygon or MultiPolygon, '
+                           'WGS84 lon/lat), e.g. {"type": "Polygon", "coordinates": [[[39.5, 7.0], ...]]}',
         }),
     )
 

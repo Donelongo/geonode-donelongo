@@ -10,11 +10,14 @@ app_name = 'info_hub' # <--- CRITICAL: Make sure this line is present and correc
 router = DefaultRouter()
 router.register(r'advisories', views.AdvisoryMessageViewSet, basename='advisorymessage')
 router.register(r'diseases', views.DiseaseViewSet, basename='disease')
+router.register(r'clusters', views.WheatClusterViewSet, basename='wheatcluster')
 
 urlpatterns = [
     path('', include(router.urls)),
     # This line is the key for the PDF download:
     path('advisory/<int:advisory_id>/pdf/', views.download_advisory_pdf, name='advisory_pdf'),
+    # Disease information PDF export (FR25)
+    path('disease/<int:disease_id>/pdf/', views.download_disease_pdf, name='disease_pdf'),
     # API endpoint for WMS layer list
     path('api/wms-layers', api.wms_layers_api_view, name='wms-layers-api'),
     # Compatibility alias (when mounted under /api/info_hub/)

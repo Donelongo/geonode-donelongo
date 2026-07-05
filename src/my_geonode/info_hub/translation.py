@@ -1,5 +1,5 @@
 from modeltranslation.translator import translator, TranslationOptions
-from .models import AdvisoryMessage, Disease
+from .models import AdvisoryMessage, Disease, WheatCluster
 
 
 class AdvisoryMessageTranslationOptions(TranslationOptions):
@@ -25,5 +25,14 @@ class DiseaseTranslationOptions(TranslationOptions):
     )
 
 
+class WheatClusterTranslationOptions(TranslationOptions):
+    fields = (
+        'name',
+        'description',
+        'suitability_trend',
+    )
+
+
 translator.register(AdvisoryMessage, AdvisoryMessageTranslationOptions)
 translator.register(Disease, DiseaseTranslationOptions)
+translator.register(WheatCluster, WheatClusterTranslationOptions)

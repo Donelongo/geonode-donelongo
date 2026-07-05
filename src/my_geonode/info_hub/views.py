@@ -5,8 +5,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponse
-from .models import AdvisoryMessage, Disease
-from .serializers import AdvisoryMessageSerializer, DiseaseSerializer
+from .models import AdvisoryMessage, Disease, WheatCluster
+from .serializers import AdvisoryMessageSerializer, DiseaseSerializer, WheatClusterSerializer
 from django.http import JsonResponse
 import requests
 
@@ -51,6 +51,55 @@ class AdvisoryMessageViewSet(viewsets.ReadOnlyModelViewSet):
 class DiseaseViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Disease.objects.all().order_by('name')
     serializer_class = DiseaseSerializer
+
+    def get_queryset(self):
+        """Optionally filter diseases to those linked to a wheat cluster
+        (FR21: diseases common in the selected cluster's region).
+        Usage: /api/info_hub/diseases/?cluster=<id>"""
+        qs = super().get_queryset()
+        cluster_id = self.request.query_params.get('cluster')
+        if cluster_id:
+            qs = qs.filter(clusters__id=cluster_id)
+        return qs
+
+
+class WheatClusterViewSet(viewsets.ReadOnlyModelViewSet):
+    """Wheat clusters (FR12). `/clusters/` returns full records including
+    linked diseases; `/clusters/geojson/` returns a GeoJSON FeatureCollection
+    ready for direct rendering as a map vector layer."""
+    queryset = WheatCluster.objects.all().prefetch_related('diseases')
+    serializer_class = WheatClusterSerializer
+
+    @action(detail=False, methods=['get'])
+    def geojson(self, request):
+        features = []
+        for cluster in self.get_queryset():
+            if not cluster.geometry:
+                continue
+            props = {
+                'feature_type': 'wheat_cluster',
+                'cluster_id': cluster.id,
+                'region': cluster.region,
+                'diseases': [
+                    {'id': d.id, 'name': d.name}
+                    for d in cluster.diseases.all()
+                ],
+            }
+            # Include base + per-language variants so the frontend's
+            # pickTranslated() helper can resolve the active language.
+            for field in ('name', 'description', 'suitability_trend'):
+                props[field] = getattr(cluster, field, '') or ''
+                for lang in ('en', 'am', 'om', 'ti'):
+                    val = getattr(cluster, f'{field}_{lang}', None)
+                    if val:
+                        props[f'{field}_{lang}'] = val
+            features.append({
+                'type': 'Feature',
+                'id': cluster.id,
+                'geometry': cluster.geometry,
+                'properties': props,
+            })
+        return Response({'type': 'FeatureCollection', 'features': features})
 
 
 # UPDATED VIEW FUNCTION TO DOWNLOAD ADVISORY CONTENT AS PDF
@@ -200,5 +249,93 @@ def download_advisory_pdf(request, advisory_id):
     filename_safe = advisory.title.replace(" ", "_").replace("/", "_").replace("\\", "_")
     response['Content-Disposition'] = f'attachment; filename="advisory_{advisory.id}_{filename_safe}.pdf"'
 
+    return response
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def download_disease_pdf(request, disease_id):
+    """Generates and serves a PDF of a Disease's information (FR25):
+    name, image, description/symptoms, and recommended controls."""
+    disease = get_object_or_404(Disease, pk=disease_id)
+
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    styles = getSampleStyleSheet()
+    styles.add(ParagraphStyle(name='DiseaseTitle', parent=styles['h1'],
+                              fontSize=18, spaceAfter=14, alignment=TA_CENTER))
+    styles.add(ParagraphStyle(name='SectionTitle', parent=styles['h2'],
+                              fontSize=14, spaceBefore=12, spaceAfter=6))
+    styles['BodyText'].fontSize = 10
+    styles['BodyText'].leading = 12
+    styles['BodyText'].spaceAfter = 8
+    styles['BodyText'].alignment = TA_JUSTIFY
+
+    story = [
+        Paragraph("Agro-Climate Advisory System — Wheat Disease Information", styles['h1']),
+        Spacer(1, 0.2 * inch),
+        Paragraph(disease.name, styles['DiseaseTitle']),
+        Spacer(1, 0.1 * inch),
+    ]
+
+    # Disease image (filesystem first, HTTP fallback — same approach as advisory)
+    if disease.image:
+        loaded = False
+        try:
+            if hasattr(disease.image, 'path') and os.path.exists(disease.image.path):
+                with open(disease.image.path, 'rb') as f:
+                    img = Image(BytesIO(f.read()))
+                loaded = True
+        except Exception:
+            pass
+        if not loaded:
+            try:
+                image_url = request.build_absolute_uri(disease.image.url)
+                resp = requests.get(image_url, timeout=10)
+                resp.raise_for_status()
+                img = Image(BytesIO(resp.content))
+                loaded = True
+            except Exception:
+                pass
+        if loaded:
+            img_width = 4 * inch
+            img_height = img.drawHeight * (img_width / img.drawWidth)
+            max_width = letter[0] - 2 * inch
+            if img_width > max_width:
+                img_width = max_width
+                img_height = img.drawHeight * (img_width / img.drawWidth)
+            img.drawWidth = img_width
+            img.drawHeight = img_height
+            story.append(img)
+            story.append(Spacer(1, 0.2 * inch))
+
+    story.append(Paragraph(f"<b>Affected Crops:</b> {disease.affected_crops}", styles['BodyText']))
+    story.append(Spacer(1, 0.1 * inch))
+
+    sections = [
+        ("Description", disease.description),
+        ("Symptoms", disease.symptoms),
+        ("Causes", disease.causes),
+        ("Treatment Options", disease.treatment_options),
+        ("Prevention Methods", disease.prevention_methods),
+        ("Recommendation", disease.suggestion),
+    ]
+    for title, content in sections:
+        if content:
+            story.append(Paragraph(f"{title}:", styles['SectionTitle']))
+            story.append(Paragraph(content, styles['BodyText']))
+            story.append(Spacer(1, 0.15 * inch))
+
+    try:
+        doc.build(story)
+    except Exception as e:
+        return HttpResponse(f"Error generating PDF: {e}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    pdf_data = buffer.getvalue()
+    buffer.close()
+
+    response = HttpResponse(pdf_data, content_type='application/pdf')
+    filename_safe = disease.name.replace(" ", "_").replace("/", "_").replace("\\", "_")
+    response['Content-Disposition'] = f'attachment; filename="disease_{disease.id}_{filename_safe}.pdf"'
     return response
 

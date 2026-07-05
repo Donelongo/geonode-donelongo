@@ -2,6 +2,41 @@
 
 from django.db import models
 
+
+class WheatCluster(models.Model):
+    """A geographically defined area with a significant concentration of wheat
+    farms (SRS 'Wheat Cluster', FR12). Geometry is stored as a GeoJSON geometry
+    object (Polygon/MultiPolygon in EPSG:4326) so it can be served straight to
+    the map without a GeoServer round-trip."""
+    name = models.CharField(max_length=255, unique=True, help_text="Cluster name (e.g., 'Bale Wheat Cluster').")
+    description = models.TextField(blank=True, help_text="General information about the cluster.")
+    suitability_trend = models.TextField(
+        blank=True,
+        help_text="Narrative of the wheat land suitability trend for this cluster "
+                  "(e.g., 'Highly suitable now; declines to moderately suitable by the 2050s under SSP5').",
+    )
+    region = models.CharField(max_length=255, blank=True, help_text="Administrative region (e.g., 'Oromia').")
+    geometry = models.JSONField(
+        blank=True, null=True,
+        help_text="GeoJSON geometry (Polygon/MultiPolygon, WGS84 lon/lat) of the cluster boundary.",
+    )
+    diseases = models.ManyToManyField(
+        'Disease', blank=True, related_name='clusters',
+        help_text="Major wheat diseases common in this cluster.",
+    )
+    created = models.DateTimeField(auto_now_add=True)
+    last_updated = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        app_label = 'info_hub'
+        verbose_name = "Wheat Cluster"
+        verbose_name_plural = "Wheat Clusters"
+        ordering = ['name']
+
+
 class AdvisoryMessage(models.Model):
     title = models.CharField(max_length=255, help_text="A short, descriptive title for the advisory.")
     # Change 'description' to 'advisory_content'
@@ -28,6 +63,20 @@ class AdvisoryMessage(models.Model):
         blank=True,
         null=True,
         help_text="Optional featured image or file for the advisory."
+    )
+    advisory_pdf = models.FileField(
+        upload_to='advisory_pdfs/',
+        blank=True,
+        null=True,
+        help_text="Optional original advisory document (PDF) as provided by the source (FR20).",
+    )
+    cluster = models.ForeignKey(
+        'WheatCluster',
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name='advisories',
+        help_text="Wheat cluster this advisory targets (leave empty for a general advisory).",
     )
 
     last_updated = models.DateTimeField(auto_now=True)
