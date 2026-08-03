@@ -1,0 +1,20 @@
+# donelongo/geonode-frontend — React app with CURRENT source baked in.
+# This mirrors EXACTLY the dev container you tested on :3000 (CRA `npm start`),
+# except the source is copied into the image instead of bind-mounted, so the boss
+# needs no source checkout. node_modules are installed fresh at build time.
+#
+# BUILD CONTEXT = the frontend folder itself (see build-images.ps1), so the local
+# 1 GB node_modules is excluded by that folder's .dockerignore.
+FROM node:18-alpine
+WORKDIR /app
+
+# Install dependencies first (better layer caching)
+COPY package*.json ./
+RUN npm install --legacy-peer-deps
+
+# Bake the current frontend source (node_modules excluded via .dockerignore)
+COPY . ./
+
+ENV CHOKIDAR_USEPOLLING=true
+EXPOSE 3000
+CMD ["npm", "start"]

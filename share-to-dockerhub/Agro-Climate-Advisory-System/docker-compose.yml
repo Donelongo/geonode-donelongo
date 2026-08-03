@@ -1,0 +1,187 @@
+# =============================================================================
+#  Agro-Climate Advisory / Wheat Suitability — self-contained stack for review.
+#  All images are pulled from Docker Hub (donelongo/…). No source code needed.
+#  Usage:  see README.md  ->  just run  start.ps1  (Windows)  or  start.sh (Linux/Mac)
+# =============================================================================
+
+x-common-django:
+  &default-common-django
+  image: donelongo/geonode-app:4.4.2
+  restart: unless-stopped
+  env_file:
+    - .env
+  volumes:
+    - statics:/mnt/volumes/statics
+    - geoserver-data-dir:/geoserver_data/data
+    - backup-restore:/backup_restore
+    - media:/usr/src/app/media
+    - data:/data
+    - tmp:/tmp
+  depends_on:
+    db:
+      condition: service_healthy
+
+services:
+
+  django:
+    <<: *default-common-django
+    container_name: django4my_geonode
+    healthcheck:
+      # GeoNode's first boot on a fresh machine can take several minutes
+      # (migrations, static files, service registration). These generous
+      # settings give it up to ~12 min before it is declared unhealthy, so
+      # dependent services (geoserver, celery) wait instead of failing.
+      test: "curl -m 10 --fail --silent --write-out 'HTTP CODE : %{http_code}\n' --output /dev/null http://django:8000/"
+      start_period: 300s
+      interval: 30s
+      timeout: 15s
+      retries: 20
+    environment:
+      - IS_CELERY=False
+    entrypoint: ["/usr/src/my_geonode/entrypoint.sh"]
+    command: ["uwsgi", "--ini", "/usr/src/my_geonode/uwsgi.ini"]
+
+  celery:
+    <<: *default-common-django
+    container_name: celery4my_geonode
+    depends_on:
+      django:
+        condition: service_healthy
+    environment:
+      - IS_CELERY=True
+    entrypoint: ["/usr/src/my_geonode/entrypoint.sh"]
+    command: "celery-cmd"
+
+  celery-beat:
+    <<: *default-common-django
+    container_name: celerybeat4my_geonode
+    depends_on:
+      django:
+        condition: service_healthy
+    command: celery -A geonode.celery_app:app beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+
+  geonode:
+    image: donelongo/geonode-nginx:1.25.3-latest
+    container_name: nginx4my_geonode
+    env_file:
+      - .env
+    environment:
+      - RESOLVER=127.0.0.11
+    ports:
+      - "${HTTP_PORT:-3500}:80"
+      - "${HTTPS_PORT:-8443}:443"
+    volumes:
+      - statics:/mnt/volumes/statics
+      - media:/mnt/volumes/statics/uploaded
+    restart: unless-stopped
+
+  memcached:
+    image: memcached:alpine
+    container_name: memcached4my_geonode
+    command: memcached ${MEMCACHED_OPTIONS:- -m 64}
+    restart: on-failure
+    healthcheck:
+      test: nc -z 127.0.0.1 11211
+      interval: 30s
+      timeout: 30s
+      retries: 5
+      start_period: 30s
+
+  geoserver:
+    image: donelongo/geonode-geoserver:2.24.4-v1
+    container_name: geoserver4my_geonode
+    healthcheck:
+      test: "curl -m 10 --fail --silent --write-out 'HTTP CODE : %{http_code}\n' --output /dev/null http://geoserver:8080/geoserver/ows"
+      start_period: 300s
+      interval: 30s
+      timeout: 15s
+      retries: 20
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
+    environment:
+      - GEOSERVER_PROXY_BASE_URL=http://localhost:8080/geoserver/
+      # Cap GeoServer heap so it runs on machines with less RAM (the default
+      # bundled setting requests 4 GB, which can crash smaller machines).
+      - GEOSERVER_JAVA_OPTS=-Djava.awt.headless=true -Xms512m -Xmx2g -XX:+UnlockDiagnosticVMOptions -XX:SoftRefLRUPolicyMSPerMB=36000 -XX:-UseGCOverheadLimit -Dfile.encoding=UTF8 -Duser.timezone=GMT -Dorg.geotools.shapefile.datetime=false -DGEOSERVER_CSRF_DISABLED=true -DALLOW_ENV_PARAMETRIZATION=true
+    volumes:
+      - statics:/mnt/volumes/statics
+      - geoserver-data-dir:/geoserver_data/data
+      - backup-restore:/backup_restore
+      - data:/data
+      - tmp:/tmp
+    restart: unless-stopped
+    depends_on:
+      data-dir-conf:
+        condition: service_healthy
+      django:
+        condition: service_healthy
+
+  data-dir-conf:
+    image: donelongo/geonode-geoserver-data:2.24.4-v1
+    container_name: gsconf4my_geonode
+    entrypoint: sleep infinity
+    volumes:
+      - geoserver-data-dir:/geoserver_data/data
+    restart: unless-stopped
+    healthcheck:
+      test: "ls -A '/geoserver_data/data' | wc -l"
+
+  db:
+    image: donelongo/geonode-postgis:15.3-latest
+    command: postgres -c "max_connections=${POSTGRESQL_MAX_CONNECTIONS:-200}"
+    container_name: db4my_geonode
+    env_file:
+      - .env
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+      - dbbackups:/pg_backups
+    restart: unless-stopped
+    healthcheck:
+      test: "pg_isready -d postgres -U postgres"
+
+  rabbitmq:
+    image: rabbitmq:3-alpine
+    container_name: rabbitmq4my_geonode
+    volumes:
+      - rabbitmq:/var/lib/rabbitmq
+    restart: unless-stopped
+
+  frontend:
+    image: donelongo/geonode-frontend:latest
+    container_name: frontend4my_geonode
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - WDS_SOCKET_PORT=3000
+      - REACT_APP_GEOSERVER_WMS_URL=http://localhost:8080/geoserver/wms
+      - REACT_APP_WMS_LAYERS_ENDPOINT=/api/info_hub/api/wms-layers
+    ports:
+      - "3000:3000"
+    command: npm start
+    depends_on:
+      geoserver:
+        condition: service_started
+      django:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  statics:
+    name: my_geonode-statics
+  geoserver-data-dir:
+    name: my_geonode-gsdatadir
+  dbdata:
+    name: my_geonode-dbdata
+  dbbackups:
+    name: my_geonode-dbbackups
+  backup-restore:
+    name: my_geonode-backup-restore
+  data:
+    name: my_geonode-data
+  tmp:
+    name: my_geonode-tmp
+  rabbitmq:
+    name: my_geonode-rabbitmq
+  media:
+    name: my_geonode-media
