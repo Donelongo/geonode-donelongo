@@ -15,12 +15,61 @@ import requests
 
 # For PDF generation (Platypus imports added)
 from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, KeepTogether, HRFlowable, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.lib.enums import TA_LEFT, TA_RIGHT, TA_CENTER, TA_JUSTIFY
+from reportlab.lib import colors
 from io import BytesIO
 import os # To check for file existence
+
+# Shared PDF branding (matches the web app's green accent).
+_PDF_GREEN = colors.HexColor('#2E6B2F')
+_PDF_GREY = colors.HexColor('#666666')
+
+
+def _pdf_letterhead(title_text):
+    """A colored letterhead bar (Table, not plain text) so exports look
+    like a branded document rather than a plain text dump."""
+    cell = Paragraph(
+        f'<font color="white"><b>{title_text}</b></font>',
+        ParagraphStyle(name='Letterhead', fontSize=13, leading=16),
+    )
+    t = Table([[cell]], colWidths=[6.5 * inch])
+    t.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), _PDF_GREEN),
+        ('TOPPADDING', (0, 0), (-1, -1), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+        ('LEFTPADDING', (0, 0), (-1, -1), 12),
+    ]))
+    return t
+
+
+def _pdf_footer(canvas, doc):
+    """Page number + a thin brand-colored rule, drawn on every page."""
+    canvas.saveState()
+    canvas.setStrokeColor(_PDF_GREEN)
+    canvas.setLineWidth(1)
+    canvas.line(0.75 * inch, 0.6 * inch, letter[0] - 0.75 * inch, 0.6 * inch)
+    canvas.setFont('Helvetica', 8)
+    canvas.setFillColor(_PDF_GREY)
+    canvas.drawString(0.75 * inch, 0.45 * inch, "Agro-Climate Advisory System")
+    canvas.drawRightString(letter[0] - 0.75 * inch, 0.45 * inch, f"Page {doc.page}")
+    canvas.restoreState()
+
+
+def _pdf_capped_image(img, max_width, max_height):
+    """Scale an Image flowable to fit within both a max width AND max
+    height, preserving aspect ratio (prevents a tall portrait photo from
+    stretching across most of the page)."""
+    ratio = img.drawHeight / float(img.drawWidth)
+    width, height = max_width, max_width * ratio
+    if height > max_height:
+        height = max_height
+        width = max_height / ratio
+    img.drawWidth = width
+    img.drawHeight = height
+    return img
 
 from django.core.mail import send_mail
 from django.conf import settings
@@ -113,47 +162,41 @@ def download_advisory_pdf(request, advisory_id):
     advisory = get_object_or_404(AdvisoryMessage, pk=advisory_id)
 
     buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    doc = SimpleDocTemplate(buffer, pagesize=letter,
+                             topMargin=0.6 * inch, bottomMargin=0.9 * inch,
+                             leftMargin=0.75 * inch, rightMargin=0.75 * inch)
     styles = getSampleStyleSheet()
     Story = [] # List to hold Platypus "flowables" (content elements)
 
-    # Define custom styles if needed (e.g., for spacing below titles)
-    # Get the sample stylesheet
-    styles = getSampleStyleSheet() # This line should remain as is
-
-    # Define custom styles (use styles.add for NEW names, modify directly for EXISTING ones)
     styles.add(ParagraphStyle(name='AdvisoryTitle',
                             parent=styles['h1'],
                             fontSize=18,
-                            spaceAfter=14,
+                            spaceBefore=16,
+                            spaceAfter=10,
                             alignment=TA_CENTER))
     styles.add(ParagraphStyle(name='SectionTitle',
                             parent=styles['h2'],
-                            fontSize=14,
-                            spaceBefore=12,
+                            fontSize=13,
+                            textColor=_PDF_GREEN,
+                            spaceBefore=14,
                             spaceAfter=6))
 
-    # --- FIX HERE: Modify the existing 'BodyText' style directly ---
     styles['BodyText'].fontSize = 10
-    styles['BodyText'].leading = 12 # Line spacing
+    styles['BodyText'].leading = 14 # Line spacing
     styles['BodyText'].spaceAfter = 8
     styles['BodyText'].alignment = TA_JUSTIFY
-    # No need to set parent again, as it's already based on 'Normal' by default for 'BodyText'.
-    # If you wanted a completely new style for body text, you'd use a different 'name' like 'MyCustomBodyText'.
 
     styles.add(ParagraphStyle(name='KeyValue',
                             parent=styles['Normal'],
                             fontSize=10,
                             spaceAfter=4))
 
-
-    # --- Document Header ---
-    Story.append(Paragraph(f"Agro-Climate Advisory System", styles['h1']))
-    Story.append(Spacer(1, 0.2 * inch))
+    # --- Branded letterhead ---
+    Story.append(_pdf_letterhead("Agro-Climate Advisory System"))
+    Story.append(Spacer(1, 0.25 * inch))
 
     # --- Advisory Title ---
     Story.append(Paragraph(f"{advisory.title}", styles['AdvisoryTitle']))
-    Story.append(Spacer(1, 0.1 * inch))
 
     # --- Featured Image directly after title (no label) ---
     if advisory.featured_image_file:
@@ -178,14 +221,10 @@ def download_advisory_pdf(request, advisory_id):
             except Exception as e:
                 errors.append(f"http:{e}")
         if loaded:
-            img_width = 4 * inch
-            img_height = img.drawHeight * (img_width / img.drawWidth)
-            max_width = letter[0] - 2 * inch
-            if img_width > max_width:
-                img_width = max_width
-                img_height = img.drawHeight * (img_width / img.drawWidth)
-            img.drawWidth = img_width
-            img.drawHeight = img_height
+            max_width = 4.5 * inch
+            max_height = 3 * inch
+            img = _pdf_capped_image(img, max_width, max_height)
+            img.hAlign = 'CENTER'
             Story.append(img)
             Story.append(Spacer(1, 0.2 * inch))
         else:
@@ -196,46 +235,41 @@ def download_advisory_pdf(request, advisory_id):
     # --- Key Details (after image) ---
     Story.append(Paragraph(f"<b>Date Posted:</b> {advisory.published_date.strftime('%Y-%m-%d')}", styles['KeyValue']))
     Story.append(Paragraph(f"<b>Category:</b> {advisory.get_category_display()}", styles['KeyValue']))
-    Story.append(Spacer(1, 0.2 * inch))
+    Story.append(Spacer(1, 0.15 * inch))
+    Story.append(HRFlowable(width="100%", thickness=0.75, color=colors.HexColor('#CCCCCC'),
+                             spaceBefore=2, spaceAfter=10))
 
+    # Each section is wrapped in KeepTogether(heading + first paragraph) so a
+    # heading never gets stranded alone at the bottom of a page with its
+    # content pushed to the next one.
+    def add_section(title, body_text, fallback=None):
+        if body_text:
+            Story.append(KeepTogether([
+                Paragraph(f"{title}", styles['SectionTitle']),
+                Paragraph(body_text, styles['BodyText']),
+            ]))
+        elif fallback:
+            Story.append(KeepTogether([
+                Paragraph(f"{title}", styles['SectionTitle']),
+                Paragraph(fallback, styles['BodyText']),
+            ]))
 
-    # --- Advisory Content ---
-    Story.append(Paragraph("Advisory Content:", styles['SectionTitle']))
-    if advisory.advisory_content:
-        Story.append(Paragraph(advisory.advisory_content, styles['BodyText']))
-    else:
-        Story.append(Paragraph("No specific advisory content provided.", styles['BodyText']))
-    Story.append(Spacer(1, 0.2 * inch))
+    add_section("Advisory Content", advisory.advisory_content, "No specific advisory content provided.")
+    add_section("Recommendation", advisory.suggestion, "No specific recommendation provided.")
 
-    # --- Recommendation/Suggestion ---
-    Story.append(Paragraph("Recommendation:", styles['SectionTitle']))
-    if advisory.suggestion:
-        Story.append(Paragraph(advisory.suggestion, styles['BodyText']))
-    else:
-        Story.append(Paragraph("No specific recommendation provided.", styles['BodyText']))
-    Story.append(Spacer(1, 0.2 * inch))
-
-    # --- Weather Outlook ---
     if advisory.rainfall_forecast or advisory.temperature_outlook:
-        Story.append(Paragraph("Weather Outlook:", styles['SectionTitle']))
+        lines = []
         if advisory.rainfall_forecast:
-            Story.append(Paragraph(f"<b>Rainfall Forecast:</b> {advisory.rainfall_forecast}", styles['BodyText']))
+            lines.append(f"<b>Rainfall Forecast:</b> {advisory.rainfall_forecast}")
         if advisory.temperature_outlook:
-            Story.append(Paragraph(f"<b>Temperature Outlook:</b> {advisory.temperature_outlook}", styles['BodyText']))
-        Story.append(Spacer(1, 0.2 * inch))
+            lines.append(f"<b>Temperature Outlook:</b> {advisory.temperature_outlook}")
+        add_section("Weather Outlook", "<br/><br/>".join(lines))
 
-    # --- Potential Risks ---
-    if advisory.potential_risks:
-        Story.append(Paragraph("Potential Risks:", styles['SectionTitle']))
-        Story.append(Paragraph(advisory.potential_risks, styles['BodyText']))
-        Story.append(Spacer(1, 0.2 * inch))
-
-    # (Featured image already handled above; block ved.)
-
+    add_section("Potential Risks", advisory.potential_risks)
 
     # --- Build the PDF ---
     try:
-        doc.build(Story)
+        doc.build(Story, onFirstPage=_pdf_footer, onLaterPages=_pdf_footer)
     except Exception as e:
         print(f"Error building PDF: {e}")
         return HttpResponse(f"Error generating PDF: {e}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -260,22 +294,23 @@ def download_disease_pdf(request, disease_id):
     disease = get_object_or_404(Disease, pk=disease_id)
 
     buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    doc = SimpleDocTemplate(buffer, pagesize=letter,
+                             topMargin=0.6 * inch, bottomMargin=0.9 * inch,
+                             leftMargin=0.75 * inch, rightMargin=0.75 * inch)
     styles = getSampleStyleSheet()
     styles.add(ParagraphStyle(name='DiseaseTitle', parent=styles['h1'],
-                              fontSize=18, spaceAfter=14, alignment=TA_CENTER))
+                              fontSize=18, spaceBefore=16, spaceAfter=10, alignment=TA_CENTER))
     styles.add(ParagraphStyle(name='SectionTitle', parent=styles['h2'],
-                              fontSize=14, spaceBefore=12, spaceAfter=6))
+                              fontSize=13, textColor=_PDF_GREEN, spaceBefore=14, spaceAfter=6))
     styles['BodyText'].fontSize = 10
-    styles['BodyText'].leading = 12
+    styles['BodyText'].leading = 14
     styles['BodyText'].spaceAfter = 8
     styles['BodyText'].alignment = TA_JUSTIFY
 
     story = [
-        Paragraph("Agro-Climate Advisory System — Wheat Disease Information", styles['h1']),
-        Spacer(1, 0.2 * inch),
+        _pdf_letterhead("Agro-Climate Advisory System — Wheat Disease Information"),
+        Spacer(1, 0.25 * inch),
         Paragraph(disease.name, styles['DiseaseTitle']),
-        Spacer(1, 0.1 * inch),
     ]
 
     # Disease image (filesystem first, HTTP fallback — same approach as advisory)
@@ -298,20 +333,18 @@ def download_disease_pdf(request, disease_id):
             except Exception:
                 pass
         if loaded:
-            img_width = 4 * inch
-            img_height = img.drawHeight * (img_width / img.drawWidth)
-            max_width = letter[0] - 2 * inch
-            if img_width > max_width:
-                img_width = max_width
-                img_height = img.drawHeight * (img_width / img.drawWidth)
-            img.drawWidth = img_width
-            img.drawHeight = img_height
+            img = _pdf_capped_image(img, 4.5 * inch, 3 * inch)
+            img.hAlign = 'CENTER'
             story.append(img)
             story.append(Spacer(1, 0.2 * inch))
 
     story.append(Paragraph(f"<b>Affected Crops:</b> {disease.affected_crops}", styles['BodyText']))
-    story.append(Spacer(1, 0.1 * inch))
+    story.append(Spacer(1, 0.15 * inch))
+    story.append(HRFlowable(width="100%", thickness=0.75, color=colors.HexColor('#CCCCCC'),
+                            spaceBefore=2, spaceAfter=10))
 
+    # Each section is wrapped in KeepTogether(heading + body) so a heading
+    # never gets stranded alone at the bottom of a page.
     sections = [
         ("Description", disease.description),
         ("Symptoms", disease.symptoms),
@@ -322,12 +355,13 @@ def download_disease_pdf(request, disease_id):
     ]
     for title, content in sections:
         if content:
-            story.append(Paragraph(f"{title}:", styles['SectionTitle']))
-            story.append(Paragraph(content, styles['BodyText']))
-            story.append(Spacer(1, 0.15 * inch))
+            story.append(KeepTogether([
+                Paragraph(f"{title}", styles['SectionTitle']),
+                Paragraph(content, styles['BodyText']),
+            ]))
 
     try:
-        doc.build(story)
+        doc.build(story, onFirstPage=_pdf_footer, onLaterPages=_pdf_footer)
     except Exception as e:
         return HttpResponse(f"Error generating PDF: {e}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
